@@ -1,0 +1,120 @@
+@model Flock
+@{
+    ViewBag.Title = "Flock " + Model.FlockNumber;
+    var canEdit = (bool)ViewBag.CanEdit;
+    var canStatus = (bool)ViewBag.CanChangeStatus;
+    var statuses = (System.Collections.Generic.IList<string>)ViewBag.Statuses;
+    var ageDays = (DateTime.Today - Model.HatchDate.Date).Days;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-1"><i class="bi bi-egg text-brand me-2"></i>Flock @Model.FlockNumber @Html.FlockStatusBadge(Model.Status)</h1>
+        <div class="text-muted small">Lot @Model.LotNumber &middot; @Model.BirdTypeName &middot; @Model.BreedName &middot; @Model.FarmName / @Model.HouseName</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Index")"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        @if (canEdit)
+        {
+            <a class="btn btn-primary btn-sm" href="@Url.Action("Edit", new { id = Model.FlockID })"><i class="bi bi-pencil me-1"></i>Edit</a>
+        }
+        @if (canStatus)
+        {
+            <button class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#statusModal"><i class="bi bi-flag me-1"></i>Change Status</button>
+        }
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100"><div class="card-body">
+            <div class="kpi-label">Current Age</div>
+            <div class="kpi-value">@(Model.Status == "Active" ? Model.CurrentAge.ToString() : "-") <small>wk</small></div>
+            <div class="kpi-sub">@(Model.Status == "Active" ? ageDays + " days since hatch" : "Depleted " + (Model.DepletionDate.HasValue ? Model.DepletionDate.Value.ToString("dd-MMM-yyyy") : ""))</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100"><div class="card-body">
+            <div class="kpi-label">Live Birds</div>
+            <div class="kpi-value">@Model.TotalBirdCount.ToString("N0")</div>
+            <div class="kpi-sub">F @Model.CurrentFemaleCount.ToString("N0") &middot; M @Model.CurrentMaleCount.ToString("N0")</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100"><div class="card-body">
+            <div class="kpi-label">Placed Birds</div>
+            <div class="kpi-value">@Model.InitialBirdCount.ToString("N0")</div>
+            <div class="kpi-sub">F @Model.FemaleCount.ToString("N0") &middot; M @Model.MaleCount.ToString("N0")</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card h-100"><div class="card-body">
+            <div class="kpi-label">Livability</div>
+            <div class="kpi-value">@Model.LivabilityPct.ToString("0.00")<small>%</small></div>
+            <div class="progress mt-2" style="height:.4rem"><div class="progress-bar bg-success" style="width:@(Model.LivabilityPct.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold">Flock Details</div>
+    <div class="card-body">
+        <dl class="row mb-0 detail-list">
+            <dt class="col-sm-4 col-lg-2">Flock Number</dt><dd class="col-sm-8 col-lg-4">@Model.FlockNumber</dd>
+            <dt class="col-sm-4 col-lg-2">Lot Number</dt><dd class="col-sm-8 col-lg-4">@Model.LotNumber</dd>
+            <dt class="col-sm-4 col-lg-2">Bird Type</dt><dd class="col-sm-8 col-lg-4">@Model.BirdTypeName</dd>
+            <dt class="col-sm-4 col-lg-2">Breed</dt><dd class="col-sm-8 col-lg-4">@Model.BreedName</dd>
+            <dt class="col-sm-4 col-lg-2">Farm</dt><dd class="col-sm-8 col-lg-4">@Model.FarmName</dd>
+            <dt class="col-sm-4 col-lg-2">House / Shed</dt><dd class="col-sm-8 col-lg-4">@Model.HouseName</dd>
+            <dt class="col-sm-4 col-lg-2">Hatch Date</dt><dd class="col-sm-8 col-lg-4">@Model.HatchDate.ToString("dd-MMM-yyyy")</dd>
+            <dt class="col-sm-4 col-lg-2">Placement Date</dt><dd class="col-sm-8 col-lg-4">@Model.PlacementDate.ToString("dd-MMM-yyyy") <span class="text-muted small">(@((Model.PlacementDate - Model.HatchDate).Days) day(s) old)</span></dd>
+            <dt class="col-sm-4 col-lg-2">Source</dt><dd class="col-sm-8 col-lg-4">@(Model.Source ?? "-")</dd>
+            <dt class="col-sm-4 col-lg-2">Status</dt><dd class="col-sm-8 col-lg-4">@Html.FlockStatusBadge(Model.Status)</dd>
+            <dt class="col-sm-4 col-lg-2">Remarks</dt><dd class="col-sm-8 col-lg-10">@(Model.Remarks ?? "-")</dd>
+            <dt class="col-sm-4 col-lg-2">Created</dt><dd class="col-sm-8 col-lg-4">@Model.CreatedDate.ToString("dd-MMM-yyyy HH:mm") by @(Model.CreatedByName ?? "-")</dd>
+            <dt class="col-sm-4 col-lg-2">Last Modified</dt><dd class="col-sm-8 col-lg-4">@(Model.ModifiedDate.HasValue ? Model.ModifiedDate.Value.ToString("dd-MMM-yyyy HH:mm") + " by " + (Model.ModifiedByName ?? "-") : "-")</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="alert alert-light border d-flex gap-2 small">
+    <i class="bi bi-graph-up-arrow text-brand"></i>
+    <div>Weekly performance, standard-vs-actual analysis and trends for this flock will appear here once weekly entry is enabled (Phase 2 onward).</div>
+</div>
+
+@if (canStatus)
+{
+    <div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            @using (Html.BeginForm("SetStatus", "Flock", FormMethod.Post, new { @class = "modal-content" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FlockID" value="@Model.FlockID" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="statusModalLabel">Change status - @Model.FlockNumber</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="Status">New Status</label>
+                        <select class="form-select" name="Status" id="Status">
+                            @foreach (var s in statuses)
+                            {
+                                <option value="@s" @(s == Model.Status ? "selected" : null)>@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label" for="DepletionDate">Depletion / Closing Date</label>
+                        <input type="date" class="form-control" name="DepletionDate" id="DepletionDate" max="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               min="@Model.PlacementDate.ToString("yyyy-MM-dd")" value="@(Model.DepletionDate.HasValue ? Model.DepletionDate.Value.ToString("yyyy-MM-dd") : "")" />
+                        <div class="form-text">Leave blank to use today when closing or depleting the flock.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Status</button>
+                </div>
+            }
+        </div>
+    </div>
+}

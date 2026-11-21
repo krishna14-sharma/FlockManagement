@@ -1,0 +1,104 @@
+/* ==========================================================================
+   Flock Weight Management - site styles (Bootstrap 5 theme layer)
+   Status colours are defined ONCE here and referenced by the CSS class names
+   stored in tblStatusConfig.BadgeCssClass.
+   ========================================================================== */
+:root {
+    --brand: #1f5f4a;
+    --brand-dark: #164536;
+    --brand-light: #e8f2ee;
+    --status-within: #198754;
+    --status-good: #20c997;
+    --status-warning: #e0a800;
+    --status-critical: #dc3545;
+    --status-info: #0d6efd;
+    --status-nodata: #6c757d;
+    --sidebar-width: 250px;
+    --bs-primary: #1f5f4a;
+    --bs-primary-rgb: 31, 95, 74;
+    --bs-link-color: #1f5f4a;
+    --bs-link-hover-color: #164536;
+    --bs-link-color-rgb: 31, 95, 74;
+    --bs-link-hover-color-rgb: 22, 69, 54;
+}
+
+body { background: #f4f6f5; font-size: .925rem; }
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+.bg-brand { background: var(--brand) !important; }
+.text-brand { color: var(--brand) !important; }
+
+/* Primary buttons in brand colour */
+.btn-primary { --bs-btn-bg: var(--brand); --bs-btn-border-color: var(--brand); --bs-btn-hover-bg: var(--brand-dark); --bs-btn-hover-border-color: var(--brand-dark); --bs-btn-active-bg: var(--brand-dark); --bs-btn-disabled-bg: var(--brand); --bs-btn-disabled-border-color: var(--brand); }
+.btn-outline-primary { --bs-btn-color: var(--brand); --bs-btn-border-color: var(--brand); --bs-btn-hover-bg: var(--brand); --bs-btn-hover-border-color: var(--brand); --bs-btn-active-bg: var(--brand); }
+.page-link { color: var(--brand); }
+.active > .page-link, .page-link.active { background-color: var(--brand); border-color: var(--brand); }
+.form-check-input:checked { background-color: var(--brand); border-color: var(--brand); }
+.form-control:focus, .form-select:focus { border-color: #6fa58f; box-shadow: 0 0 0 .2rem rgba(31, 95, 74, .2); }
+
+/* ---------- Centralised status badges ---------- */
+.status-badge, .badge { font-weight: 600; letter-spacing: .01em; }
+.status-within   { background-color: var(--status-within) !important;   color: #fff !important; }
+.status-good     { background-color: var(--status-good) !important;     color: #063 !important; }
+.status-warning  { background-color: var(--status-warning) !important;  color: #212529 !important; }
+.status-critical { background-color: var(--status-critical) !important; color: #fff !important; }
+.status-info     { background-color: var(--status-info) !important;     color: #fff !important; }
+.status-nodata   { background-color: var(--status-nodata) !important;   color: #fff !important; }
+.text-status-within { color: var(--status-within) !important; }
+.text-status-warning { color: #b38600 !important; }
+.text-status-critical { color: var(--status-critical) !important; }
+
+/* ---------- Layout ---------- */
+.app-body { min-height: calc(100vh - 56px); }
+.app-main { min-width: 0; }
+
+@media (min-width: 992px) {
+    .sidebar { width: var(--sidebar-width); flex: 0 0 var(--sidebar-width); background: #fff; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; }
+}
+.sidebar .offcanvas-body { background: #fff; }
+.sidebar-heading { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: #8a9590; padding: .9rem 1.25rem .35rem; font-weight: 700; }
+.sidebar-nav .nav-link { color: #33403b; padding: .5rem 1.25rem; display: flex; align-items: center; gap: .65rem; border-left: 3px solid transparent; }
+.sidebar-nav .nav-link i { font-size: 1.05rem; width: 1.2rem; text-align: center; color: #6b7a74; }
+.sidebar-nav .nav-link:hover { background: var(--brand-light); color: var(--brand-dark); }
+.sidebar-nav .nav-link.active { background: var(--brand-light); color: var(--brand-dark); border-left-color: var(--brand); font-weight: 600; }
+.sidebar-nav .nav-link.active i { color: var(--brand); }
+
+/* ---------- Cards / KPI ---------- */
+.card { border: 0; border-radius: .6rem; }
+.card-header { border-bottom: 1px solid #edf0ee; }
+.kpi-card { box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.kpi-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; font-weight: 600; }
+.kpi-value { font-size: 1.65rem; font-weight: 700; line-height: 1.2; margin-top: .25rem; color: #1d2925; }
+.kpi-value small { font-size: .9rem; font-weight: 500; color: #6c757d; }
+.kpi-sub { font-size: .78rem; color: #6c757d; margin-top: .15rem; }
+
+.filter-bar { border-radius: .6rem; }
+.form-label.required::after { content: " *"; color: var(--status-critical); }
+.detail-list dt { font-weight: 600; color: #5d6b66; }
+.detail-list dd { margin-bottom: .6rem; }
+.table > :not(caption) > * > * { padding: .6rem .75rem; }
+.table thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; color: #5d6b66; white-space: nowrap; }
+
+/* ---------- Login ---------- */
+.app-anon { background: linear-gradient(135deg, #1f5f4a 0%, #2f8a6b 55%, #e8f2ee 55.1%); min-height: 100vh; }
+.login-wrap { min-height: calc(100vh - 3rem); }
+.login-card { max-width: 420px; }
+.login-logo { width: 64px; height: 64px; border-radius: 50%; background: var(--brand-light); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+
+/* ---------- Responsive tables: stacked cards on phones ---------- */
+@media (max-width: 767.98px) {
+    .table-stack thead { display: none; }
+    .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+    .table-stack tr { background: #fff; border-bottom: 6px solid #f4f6f5; padding: .35rem 0; }
+    .table-stack td { border: 0 !important; padding: .3rem .9rem !important; text-align: right !important; overflow: hidden; }
+    .table-stack td[data-label]::before { content: attr(data-label); float: left; width: 42%; text-align: left; font-weight: 600; color: #6c757d; font-size: .78rem; text-transform: uppercase; padding-top: .15rem; }
+    .table-stack td .progress { display: inline-flex; width: 55%; vertical-align: middle; }
+    .table-stack td[colspan] { text-align: center !important; }
+    .kpi-value { font-size: 1.35rem; }
+}
+
+@media print {
+    .sidebar, header.navbar, .filter-bar, .no-print, .btn, .pagination { display: none !important; }
+    body { background: #fff; }
+    .card { box-shadow: none !important; }
+}

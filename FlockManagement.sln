@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlockManagement", "FlockManagement\FlockManagement.csproj", "{6C1E2B10-4A1D-4E7B-9A51-1C2B3D4E5F04}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{6C1E2B10-4A1D-4E7B-9A51-1C2B3D4E5F09}"
+	ProjectSection(SolutionItems) = preProject
+		Database\01_Schema.sql = Database\01_Schema.sql
+		Database\02_StoredProcedures_Phase1.sql = Database\02_StoredProcedures_Phase1.sql
+		Database\03_SeedData.sql = Database\03_SeedData.sql
+		Database\04_Schema_Phase2to5.sql = Database\04_Schema_Phase2to5.sql
+		Database\05_Procedures_Phase2_3.sql = Database\05_Procedures_Phase2_3.sql
+		Database\06_Procedures_Phase4_5.sql = Database\06_Procedures_Phase4_5.sql
+		Database\07_SeedData_Phase2to5.sql = Database\07_SeedData_Phase2to5.sql
+		Database\08_Production.sql = Database\08_Production.sql
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6C1E2B10-4A1D-4E7B-9A51-1C2B3D4E5F04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C1E2B10-4A1D-4E7B-9A51-1C2B3D4E5F04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C1E2B10-4A1D-4E7B-9A51-1C2B3D4E5F04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C1E2B10-4A1D-4E7B-9A51-1C2B3D4E5F04}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

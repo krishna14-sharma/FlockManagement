@@ -1,0 +1,141 @@
+@model ReportViewModel
+@using System.Data
+@{
+    ViewBag.Title = "Reports";
+    var r = Model.Result;
+}
+<h1 class="h4 mb-3"><i class="bi bi-file-earmark-bar-graph text-brand me-2"></i>Reports</h1>
+
+<form method="get" action="@Url.Action("Index")" id="reportForm" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+            <label class="form-label small text-muted mb-1">Report *</label>
+            @Html.DropDownList("ReportType", Model.ReportTypes, "-- Select report --", new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Farm</label>
+            @Html.DropDownList("FarmID", Model.Farms, new { @class = "form-select", id = "rFarm", data_cascade_target = "#rHouse", data_cascade_url = Url.Action("Houses", "Lookup"), data_cascade_empty = "All houses", data_cascade_always = "true" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">House</label>
+            @Html.DropDownList("HouseID", Model.Houses, new { @class = "form-select", id = "rHouse" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Bird Type</label>
+            @Html.DropDownList("BirdTypeID", Model.BirdTypes, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Lot</label>
+            @Html.DropDownList("LotID", Model.Lots, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Flock</label>
+            @Html.DropDownList("FlockID", Model.Flocks, new { @class = "form-select" })
+        </div>
+        <div class="col-3 col-md-1">
+            <label class="form-label small text-muted mb-1">From wk</label>
+            <input type="number" class="form-control" name="FromWeek" value="@Model.FromWeek" min="0" max="120" />
+        </div>
+        <div class="col-3 col-md-1">
+            <label class="form-label small text-muted mb-1">To wk</label>
+            <input type="number" class="form-control" name="ToWeek" value="@Model.ToWeek" min="0" max="120" />
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">From date</label>
+            <input type="date" class="form-control" name="FromDate" value="@(Model.FromDate.HasValue ? Model.FromDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">To date</label>
+            <input type="date" class="form-control" name="ToDate" value="@(Model.ToDate.HasValue ? Model.ToDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="ActiveOnly" value="true" id="activeOnly" @(Model.ActiveOnly ? "checked" : null) />
+                <label class="form-check-label" for="activeOnly">Active flocks only</label>
+            </div>
+        </div>
+        <div class="col-6 col-md-2 d-grid"><button type="submit" class="btn btn-primary"><i class="bi bi-play-fill me-1"></i>Run report</button></div>
+    </div>
+</form>
+@Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
+
+@if (r == null)
+{
+    <div class="row g-3">
+        @foreach (var t in ReportCatalog.Types)
+        {
+            <div class="col-6 col-md-4 col-xl-3">
+                <a class="card shadow-sm h-100 text-decoration-none text-reset" href="@Url.Action("Index", new { ReportType = t.Key })">
+                    <div class="card-body"><i class="bi bi-file-earmark-text text-brand me-1"></i><span class="fw-semibold">@t.Value</span></div>
+                </a>
+            </div>
+        }
+    </div>
+}
+else
+{
+    var table = r.Table;
+    var shown = Math.Min(table.Rows.Count, Model.MaxScreenRows);
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="fw-semibold">@r.Title</div>
+                <div class="small text-muted">@table.Rows.Count.ToString("N0") rows @(r.Filters.Count > 0 ? " · " + string.Join(" · ", r.Filters) : "") · generated @r.GeneratedAt.ToString("dd-MMM-yyyy HH:mm") by @r.GeneratedBy</div>
+            </div>
+            @if (Model.CanExport && table.Rows.Count > 0)
+            {
+                <div class="btn-group btn-group-sm">
+                    @foreach (var fmt in new[] { new { F = "xlsx", T = "Excel", I = "bi-file-earmark-excel" }, new { F = "pdf", T = "PDF", I = "bi-file-earmark-pdf" }, new { F = "csv", T = "CSV", I = "bi-filetype-csv" } })
+                    {
+                        <button type="submit" form="reportForm" formaction="@Url.Action("Export", new { format = fmt.F })" class="btn btn-outline-secondary"><i class="bi @fmt.I me-1"></i>@fmt.T</button>
+                    }
+                </div>
+            }
+        </div>
+        <div class="table-responsive" style="max-height:70vh">
+            <table class="table table-sm table-hover table-striped align-middle mb-0 small report-table">
+                <thead class="table-light sticky-top">
+                    <tr>@foreach (DataColumn c in table.Columns) { <th class="text-nowrap @(IsNumeric(c) ? "text-end" : "")">@c.ColumnName</th> }</tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < shown; i++)
+                    {
+                        var row = table.Rows[i];
+                        <tr>
+                            @foreach (DataColumn c in table.Columns)
+                            {
+                                <td class="text-nowrap @(IsNumeric(c) ? "text-end" : "")">@Cell(row[c])</td>
+                            }
+                        </tr>
+                    }
+                    @if (table.Rows.Count == 0)
+                    {
+                        <tr><td colspan="@table.Columns.Count" class="text-center text-muted py-4">No data for these filters.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (table.Rows.Count > shown)
+        {
+            <div class="card-footer small text-muted">Showing the first @shown.ToString("N0") of @table.Rows.Count.ToString("N0") rows. Export to see them all.</div>
+        }
+    </div>
+}
+
+@functions {
+    static bool IsNumeric(DataColumn c)
+    {
+        var t = c.DataType;
+        return t == typeof(int) || t == typeof(long) || t == typeof(decimal) || t == typeof(double) || t == typeof(float) || t == typeof(short) || t == typeof(byte);
+    }
+
+    static string Cell(object v)
+    {
+        if (v == null || v == DBNull.Value) return "";
+        if (v is DateTime) return ((DateTime)v).ToString("dd-MMM-yyyy");
+        if (v is decimal) return ((decimal)v).ToString("#,0.##");
+        if (v is double) return ((double)v).ToString("#,0.##");
+        if (v is int || v is long) return string.Format("{0:N0}", v);
+        return v.ToString();
+    }
+}

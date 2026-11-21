@@ -1,0 +1,106 @@
+@model FocusViewModel
+@{
+    ViewBag.Title = Model.Title;
+    string[] codes;
+    switch (Model.Area)
+    {
+        case "weight": codes = new[] { "BODY_WEIGHT", "WEIGHT_GAIN", "MALE_BODY_WEIGHT" }; break;
+        case "feed": codes = new[] { "FEED_INTAKE", "MALE_FEED_INTAKE" }; break;
+        case "uniformity": codes = new[] { "UNIFORMITY", "MALE_UNIFORMITY" }; break;
+        case "mortality": codes = new[] { "MORTALITY", "MALE_MORTALITY" }; break;
+        default: codes = Model.Points.Where(p => p.ParameterGroup == "NUTRITION").OrderBy(p => p.SortOrder).Select(p => p.ParameterCode).Distinct().ToArray(); break;
+    }
+    // only parameters that have data for this flock
+    codes = codes.Where(c => Model.Points.Any(p => p.ParameterCode == c && (p.ActualValue.HasValue || p.StandardValue.HasValue))).ToArray();
+    var meta = codes.Select(c => Model.Points.First(p => p.ParameterCode == c)).ToList();
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi @Model.Icon text-brand me-2"></i>@Model.Title</h1>
+    @if (Model.Flock != null)
+    {
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-export-csv="#focusTable" data-export-name="@Model.Title @Model.Flock.FlockNumber"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
+    }
+</div>
+@Html.Partial("_FlockPicker", Model.Picker)
+
+@if (Model.Flock == null)
+{
+    <p class="small text-muted">Pick a flock for its week-by-week @Model.Title.ToLower(). Latest position of every active flock:</p>
+    <div class="card shadow-sm">@Html.Partial("_FlockMatrix", Model.AllFlocks)</div>
+}
+else if (codes.Length == 0)
+{
+    <div class="text-muted text-center py-5">No @Model.Area data has been entered for flock @Model.Flock.FlockNumber yet.</div>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        @foreach (var m in meta)
+        {
+            <div class="@(meta.Count == 1 ? "col-12" : "col-xl-6")">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white fw-semibold">@m.ParameterName <span class="text-muted fw-normal small">(@m.UnitCode)</span></div>
+                    <div class="card-body"><div style="height:280px"><canvas id="ch_@m.ParameterCode"></canvas></div></div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0" id="focusTable">
+                <thead class="table-light">
+                    <tr>
+                        <th rowspan="2" class="align-middle">Week</th>
+                        <th rowspan="2" class="align-middle">Age</th>
+                        @foreach (var m in meta) { <th colspan="3" class="text-center border-start">@m.ParameterName</th> }
+                        @if (Model.Area == "uniformity") { <th rowspan="2" class="align-middle">Grade</th> }
+                    </tr>
+                    <tr>
+                        @foreach (var m in meta) { <th class="text-end border-start">Std</th><th class="text-end">Actual</th><th>Status</th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var wk in Model.Weeks)
+                    {
+                        var first = Model.Points.FirstOrDefault(p => p.WeekNo == wk);
+                        <tr>
+                            <td class="fw-semibold"><a href="@Url.Action("Weekly", new { id = first.FlockWeeklyID })">@wk</a></td>
+                            <td>@first.AgeInWeeks</td>
+                            @foreach (var m in meta)
+                            {
+                                var pt = Model.Get(wk, m.ParameterCode);
+                                <td class="text-end border-start text-muted">@(pt != null ? Html.Num(pt.StandardValue, m.DecimalPlaces) : "-")</td>
+                                <td class="text-end fw-semibold">@(pt != null ? Html.Num(pt.ActualValue, m.DecimalPlaces) : "-")</td>
+                                <td>@(pt != null && pt.ActualValue.HasValue ? Html.StatusBadge(pt.StatusCode) : MvcHtmlString.Empty)</td>
+                            }
+                            @if (Model.Area == "uniformity")
+                            {
+                                string grade;
+                                <td>@(Model.UniformityGrades.TryGetValue(wk, out grade) ? grade : "-")</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section scripts {
+@if (Model.Flock != null && codes.Length > 0)
+{
+    <script>
+        $(function () {
+            var trend = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(FlockManagement.Web.Controllers.AnalysisController.TrendJson(Model.Points.Where(p => codes.Contains(p.ParameterCode)))));
+            var weeklyUrl = '@Url.Action("Weekly")/';
+            trend.series.forEach(function (s) {
+                fwm.stdActualChart('ch_' + s.code, s, {
+                    bar: '@Model.Area' === 'mortality', zero: '@Model.Area' === 'mortality',
+                    onClick: function (e, els) { if (els.length) { var p = s.points[els[0].index]; if (p && p.id) location.href = weeklyUrl + p.id; } }
+                });
+            });
+        });
+    </script>
+}
+}

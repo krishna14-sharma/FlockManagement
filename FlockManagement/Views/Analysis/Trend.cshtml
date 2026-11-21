@@ -1,0 +1,60 @@
+@model TrendViewModel
+@{
+    ViewBag.Title = "Trend Analysis";
+}
+<h1 class="h4 mb-3"><i class="bi bi-graph-up-arrow text-brand me-2"></i>Age-wise Trend Analysis</h1>
+@{ Model.Picker.Extra.Clear(); }
+@Html.Partial("_FlockPicker", Model.Picker)
+
+@if (Model.Flock == null)
+{
+    <div class="text-muted text-center py-5">Select a flock to see how its parameters moved against the standard, week by week.</div>
+}
+else
+{
+    <form method="get" class="card card-body shadow-sm mb-3">
+        <input type="hidden" name="flockId" value="@Model.Flock.FlockID" />
+        <div class="small text-muted mb-2">Parameters to chart (one chart each):</div>
+        <div class="d-flex flex-wrap gap-3">
+            @foreach (var kv in Model.Available)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="p" value="@kv.Key" id="p_@kv.Key" @(Model.Selected.Contains(kv.Key) ? "checked" : null) />
+                    <label class="form-check-label" for="p_@kv.Key">@kv.Value</label>
+                </div>
+            }
+        </div>
+        <div class="mt-2"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-arrow-repeat me-1"></i>Update charts</button></div>
+    </form>
+
+    <div class="row g-3">
+        @foreach (var code in Model.Selected.Where(c => Model.Available.Any(a => a.Key == c)))
+        {
+            <div class="col-xl-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white fw-semibold">@Model.Available.First(a => a.Key == code).Value</div>
+                    <div class="card-body"><div style="height:280px"><canvas id="ch_@code"></canvas></div></div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section scripts {
+@if (Model.Flock != null)
+{
+    <script>
+        $(function () {
+            var trend = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(FlockManagement.Web.Controllers.AnalysisController.TrendJson(Model.Points.Where(p => Model.Selected.Contains(p.ParameterCode)))));
+            var weeklyUrl = '@Url.Action("Weekly")/';
+            trend.series.forEach(function (s) {
+                var zero = s.code === 'MORTALITY' || s.code === 'MALE_MORTALITY' || s.code === 'POPULATION';
+                fwm.stdActualChart('ch_' + s.code, s, {
+                    zero: zero, bar: s.code === 'MORTALITY',
+                    onClick: function (e, els) { if (els.length) { var p = s.points[els[0].index]; if (p && p.id) location.href = weeklyUrl + p.id; } }
+                });
+            });
+        });
+    </script>
+}
+}

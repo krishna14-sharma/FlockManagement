@@ -1,0 +1,47 @@
+@model MasterListViewModel<Lot>
+@{
+    ViewBag.Title = "Lots";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Lots" }, { "Icon", "bi-collection" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Lot" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_MasterFilter", new ViewDataDictionary { { "Search", Model.Search }, { "Status", Model.Status }, { "ParentOptions", Model.ParentOptions }, { "ParentLabel", "Farm" } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Lot Number</th>
+                    <th>Lot Name</th>
+                    <th>Farm</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var l in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Lot Number"><span class="fw-semibold">@l.LotNumber</span></td>
+                        <td data-label="Lot Name">@l.LotName</td>
+                        <td data-label="Farm">@(l.FarmName ?? "Any")</td>
+                        <td data-label="Description">@l.Description</td>
+                        <td data-label="Status">@Html.ActiveBadge(l.IsActive)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = l.LotID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @Html.Partial("_ToggleActive", new ViewDataDictionary { { "Id", l.LotID }, { "IsActive", l.IsActive }, { "Controller", "Lot" } })
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">No lots found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

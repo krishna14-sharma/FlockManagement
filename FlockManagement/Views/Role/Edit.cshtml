@@ -1,0 +1,47 @@
+@model RoleEditViewModel
+@{
+    ViewBag.Title = Model.RoleID == 0 ? "New Role" : "Edit Role";
+}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8 col-xl-6">
+        <h1 class="h4 mb-3"><i class="bi bi-shield-lock text-brand me-2"></i>@ViewBag.Title</h1>
+        @using (Html.BeginForm("Save", "Role", FormMethod.Post, new { @class = "card shadow-sm", novalidate = "novalidate" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.RoleID)
+            @Html.HiddenFor(m => m.IsSystem)
+            <div class="card-body">
+                @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.RoleName, new { @class = "form-label required" })
+                    @if (Model.IsSystem)
+                    {
+                        @Html.TextBoxFor(m => m.RoleName, new { @class = "form-control", @readonly = "readonly" })
+                        <div class="form-text">System roles cannot be renamed or deactivated.</div>
+                    }
+                    else
+                    {
+                        @Html.TextBoxFor(m => m.RoleName, new { @class = "form-control", maxlength = 50 })
+                    }
+                    @Html.ValidationMessageFor(m => m.RoleName, "", new { @class = "text-danger small" })
+                </div>
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.Description, new { @class = "form-label" })
+                    @Html.TextAreaFor(m => m.Description, 3, 0, new { @class = "form-control", maxlength = 250 })
+                </div>
+                @if (!Model.IsSystem)
+                {
+                    <div class="form-check form-switch">
+                        @Html.CheckBoxFor(m => m.IsActive, new { @class = "form-check-input", role = "switch" })
+                        @Html.LabelFor(m => m.IsActive, new { @class = "form-check-label" })
+                    </div>
+                }
+                else
+                {
+                    @Html.HiddenFor(m => m.IsActive)
+                }
+                @Html.Partial("_FormButtons")
+            </div>
+        }
+    </div>
+</div>

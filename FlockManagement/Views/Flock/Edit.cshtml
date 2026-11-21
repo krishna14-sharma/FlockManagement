@@ -1,0 +1,191 @@
+@model FlockEditViewModel
+@functions {
+    // Adds readonly only when needed (an attribute with a null value would still be rendered).
+    private static System.Collections.Generic.IDictionary<string, object> Attrs(object attributes, bool readOnly)
+    {
+        var dict = HtmlHelper.AnonymousObjectToHtmlAttributes(attributes);
+        if (readOnly) dict["readonly"] = "readonly";
+        return dict;
+    }
+}
+@{
+    var isNew = Model.FlockID == 0;
+    ViewBag.Title = isNew ? "New Flock" : "Edit Flock " + Model.FlockNumber;
+    var locked = Model.HasWeeklyData;
+}
+<div class="row justify-content-center">
+    <div class="col-12 col-xxl-10">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h1 class="h4 mb-0"><i class="bi bi-egg text-brand me-2"></i>@ViewBag.Title</h1>
+            @if (!isNew) { @Html.FlockStatusBadge(Model.Status) }
+        </div>
+
+        @if (locked)
+        {
+            <div class="alert alert-info d-flex gap-2"><i class="bi bi-lock"></i>
+                <div>Weekly data has been recorded for this flock. Bird counts, dates, bird type and farm are locked; corrections are made through Flock Adjustment / Transfer so the population history stays consistent.</div>
+            </div>
+        }
+
+        @using (Html.BeginForm("Save", "Flock", FormMethod.Post, new { novalidate = "novalidate", id = "flockForm" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.FlockID)
+            @Html.HiddenFor(m => m.RowVersion)
+            @Html.HiddenFor(m => m.HasWeeklyData)
+            @Html.HiddenFor(m => m.Status)
+            @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-card-heading me-1"></i>Identification</div>
+                <div class="card-body row g-3">
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.FlockNumber, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.FlockNumber, new { @class = "form-control text-uppercase", maxlength = 30, autofocus = "autofocus" })
+                        @Html.ValidationMessageFor(m => m.FlockNumber, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.LotID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.LotID, Model.Lots, new { @class = "form-select" })
+                        @Html.ValidationMessageFor(m => m.LotID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.Source, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Source, new { @class = "form-control", maxlength = 100 })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.BirdTypeID, new { @class = "form-label required" })
+                        @if (locked)
+                        {
+                            @Html.HiddenFor(m => m.BirdTypeID)
+                            @Html.DropDownListFor(m => m.BirdTypeID, Model.BirdTypes, new { @class = "form-select", disabled = "disabled", id = "BirdTypeID_ro", name = "BirdTypeID_ro" })
+                        }
+                        else
+                        {
+                            @Html.DropDownListFor(m => m.BirdTypeID, Model.BirdTypes, new { @class = "form-select" })
+                        }
+                        @Html.ValidationMessageFor(m => m.BirdTypeID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.BreedID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.BreedID, Model.Breeds, new { @class = "form-select" })
+                        @Html.ValidationMessageFor(m => m.BreedID, "", new { @class = "text-danger small" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-geo me-1"></i>Location &amp; Placement</div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.FarmID, new { @class = "form-label required" })
+                        @if (locked)
+                        {
+                            @Html.HiddenFor(m => m.FarmID)
+                            @Html.DropDownListFor(m => m.FarmID, Model.Farms, new { @class = "form-select", disabled = "disabled", id = "FarmID_ro", name = "FarmID_ro" })
+                        }
+                        else
+                        {
+                            @Html.DropDownListFor(m => m.FarmID, Model.Farms, new { @class = "form-select", data_cascade_target = "#HouseID", data_cascade_url = Url.Action("Houses", "Lookup"), data_cascade_empty = "-- Select house --" })
+                        }
+                        @Html.ValidationMessageFor(m => m.FarmID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.HouseID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.HouseID, Model.Houses, new { @class = "form-select" })
+                        @Html.ValidationMessageFor(m => m.HouseID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.HatchDate, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.HatchDate, "{0:yyyy-MM-dd}", Attrs(new { @class = "form-control", type = "date" }, locked))
+                        @Html.ValidationMessageFor(m => m.HatchDate, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.PlacementDate, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.PlacementDate, "{0:yyyy-MM-dd}", Attrs(new { @class = "form-control", type = "date", max = DateTime.Today.ToString("yyyy-MM-dd") }, locked))
+                        @Html.ValidationMessageFor(m => m.PlacementDate, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-12 col-md-6 d-flex align-items-end">
+                        <div class="w-100 p-2 rounded bg-light small" id="agePreview" aria-live="polite">
+                            <i class="bi bi-calendar-week me-1"></i><span>Age at placement and current age are calculated from the hatch date.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-123 me-1"></i>Bird Count</div>
+                <div class="card-body row g-3 align-items-end">
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.FemaleCount, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.FemaleCount, Attrs(new { @class = "form-control text-end js-count", type = "number", min = 0, step = 1, inputmode = "numeric" }, locked))
+                        @Html.ValidationMessageFor(m => m.FemaleCount, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.MaleCount, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.MaleCount, Attrs(new { @class = "form-control text-end js-count", type = "number", min = 0, step = 1, inputmode = "numeric" }, locked))
+                        @Html.ValidationMessageFor(m => m.MaleCount, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Total Birds</label>
+                        <div class="form-control text-end fw-bold bg-light" id="totalBirds">@Model.TotalBirdCount.ToString("N0")</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Male : Female</label>
+                        <div class="form-control text-end bg-light" id="sexRatio">-</div>
+                    </div>
+                    @if (isNew)
+                    {
+                        <div class="col-md-4">
+                            @Html.LabelFor(m => m.ChickAvgWeight, new { @class = "form-label" })
+                            @Html.TextBoxFor(m => m.ChickAvgWeight, new { @class = "form-control text-end", type = "number", min = "0.1", step = "0.01", inputmode = "decimal" })
+                            @Html.ValidationMessageFor(m => m.ChickAvgWeight, "", new { @class = "text-danger small" })
+                        </div>
+                    }
+                    <div class="col-12">
+                        @Html.LabelFor(m => m.Remarks, new { @class = "form-label" })
+                        @Html.TextAreaFor(m => m.Remarks, 2, 0, new { @class = "form-control", maxlength = 500 })
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body py-2">
+                    @Html.Partial("_FormButtons", new ViewDataDictionary { { "CancelUrl", isNew ? Url.Action("Index") : Url.Action("Details", new { id = Model.FlockID }) } })
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section scripts {
+<script>
+    (function () {
+        var $f = $('#FemaleCount'), $m = $('#MaleCount');
+        function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+        function updateCounts() {
+            var f = parseInt($f.val(), 10) || 0, m = parseInt($m.val(), 10) || 0;
+            $('#totalBirds').text(fmt(f + m));
+            $('#sexRatio').text(f > 0 && m > 0 ? '1 : ' + (f / m).toFixed(1) + '  (' + (m * 100 / f).toFixed(1) + '% males)' : '-');
+        }
+        function updateAge() {
+            var h = $('#HatchDate').val(), p = $('#PlacementDate').val();
+            if (!h) return;
+            var hatch = new Date(h + 'T00:00:00'), today = new Date(); today.setHours(0, 0, 0, 0);
+            var parts = [];
+            if (p) {
+                var place = new Date(p + 'T00:00:00');
+                var d = Math.round((place - hatch) / 86400000);
+                if (d < 0) { parts.push('<span class="text-danger">Hatch date is after placement date</span>'); }
+                else { parts.push('Age at placement: <strong>' + d + ' day(s)</strong>'); }
+            }
+            var days = Math.round((today - hatch) / 86400000);
+            if (days >= 0) parts.push('Current age: <strong>' + Math.floor(days / 7) + ' wk ' + (days % 7) + ' d</strong>');
+            $('#agePreview span').html(parts.join(' &middot; '));
+        }
+        $('.js-count').on('input', updateCounts);
+        $('#HatchDate, #PlacementDate').on('change input', updateAge);
+        updateCounts(); updateAge();
+    })();
+</script>
+}

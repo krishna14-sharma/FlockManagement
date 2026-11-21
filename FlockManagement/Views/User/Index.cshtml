@@ -1,0 +1,68 @@
+@model UserListViewModel
+@{
+    ViewBag.Title = "Users";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Users" }, { "Icon", "bi-people" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add User" }, { "ExportTarget", "#grid" } })
+
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-6">
+            <label class="form-label small text-muted mb-1" for="search">Search</label>
+            <input type="search" class="form-control" id="search" name="search" value="@Model.Search" placeholder="User name, full name or e-mail" maxlength="100" />
+        </div>
+        <div class="col-8 col-md-4">
+            <label class="form-label small text-muted mb-1" for="roleId">Role</label>
+            @Html.DropDownList("roleId", Model.Roles, new { @class = "form-select", id = "roleId" })
+        </div>
+        <div class="col-4 col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>User Name</th>
+                    <th>Full Name</th>
+                    <th>Role</th>
+                    <th>Farm Access</th>
+                    <th>Last Login</th>
+                    <th>Status</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="User Name"><span class="fw-semibold">@u.UserName</span></td>
+                        <td data-label="Full Name">@u.FullName<br /><small class="text-muted">@u.Email</small></td>
+                        <td data-label="Role">@u.RoleName</td>
+                        <td data-label="Farm Access">@(u.FarmName ?? "All farms")</td>
+                        <td data-label="Last Login">@(u.LastLoginDate.HasValue ? u.LastLoginDate.Value.ToString("dd-MMM-yyyy HH:mm") : "Never")</td>
+                        <td data-label="Status">
+                            @Html.ActiveBadge(u.IsActive)
+                            @if (u.IsLocked) { <span class="badge status-critical">Locked</span> }
+                            @if (u.MustChangePassword) { <span class="badge status-info">Pwd change due</span> }
+                        </td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = u.UserID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a class="btn btn-sm btn-outline-warning" href="@Url.Action("ResetPassword", new { id = u.UserID })" title="Reset password"><i class="bi bi-key"></i></a>
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-4">No users found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

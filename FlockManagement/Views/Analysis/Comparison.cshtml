@@ -1,0 +1,79 @@
+@model ComparisonViewModel
+@{
+    ViewBag.Title = "Flock Comparison";
+    var rows = Model.Rows;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-layout-three-columns text-brand me-2"></i>Flock Comparison</h1>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-export-csv="#cmpTable" data-export-name="Flock comparison"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
+</div>
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label small text-muted mb-1">Flocks to compare (up to 12; hold Ctrl / Cmd to pick several)</label>
+            <select class="form-select" name="flockIds" multiple size="6">
+                @foreach (var f in Model.AvailableFlocks)
+                {
+                    <option value="@f.Id" @(Model.FlockIDs.Contains(f.Id) ? "selected" : null)>@f.Text</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">At age (weeks)</label>
+            <input type="number" class="form-control" name="ageWeek" value="@Model.AgeWeek" min="0" max="120" placeholder="Latest" />
+            <div class="form-text">Blank = each flock's latest week.</div>
+        </div>
+        <div class="col-6 col-md-2 d-grid"><button type="submit" class="btn btn-primary"><i class="bi bi-arrow-left-right me-1"></i>Compare</button></div>
+    </div>
+</form>
+
+@if (rows.Count == 0)
+{
+    <div class="text-muted text-center py-5">Nothing to compare &ndash; the selected flocks have no data@(Model.AgeWeek.HasValue ? " at week " + Model.AgeWeek : "").</div>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-semibold">Body weight vs standard (g)</div><div class="card-body"><div style="height:280px"><canvas id="cmpBw"></canvas></div></div></div></div>
+        <div class="col-lg-6"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-semibold">Performance score</div><div class="card-body"><div style="height:280px"><canvas id="cmpScore"></canvas></div></div></div></div>
+    </div>
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0" id="cmpTable">
+                <thead class="table-light">
+                    <tr><th>Parameter</th>@foreach (var r in rows) { <th class="text-end">@r.FlockNumber<div class="small text-muted fw-normal">@r.BirdTypeName &middot; wk @r.WeekNo</div></th> }</tr>
+                </thead>
+                <tbody>
+                    <tr><td>Farm / House</td>@foreach (var r in rows) { <td class="text-end small">@r.FarmName / @r.HouseName</td> }</tr>
+                    <tr><td>Birds (closing)</td>@foreach (var r in rows) { <td class="text-end">@(r.ClosingPopulation.HasValue ? r.ClosingPopulation.Value.ToString("N0") : "-")</td> }</tr>
+                    <tr><td>Body weight (g)</td>@foreach (var r in rows) { <td class="text-end">@Html.StatusValue(r.BodyWeightStatus ?? "NODATA", Html.Num(r.BodyWeight, 0)) <div class="small text-muted">std @Html.Num(r.StdBodyWeight, 0)</div></td> }</tr>
+                    <tr><td>Weight gain (g)</td>@foreach (var r in rows) { <td class="text-end">@Html.StatusValue(r.WeightGainStatus ?? "NODATA", Html.Num(r.WeightGain, 0)) <div class="small text-muted">std @Html.Num(r.StdWeightGain, 0)</div></td> }</tr>
+                    <tr><td>Feed intake (g/b/d)</td>@foreach (var r in rows) { <td class="text-end">@Html.StatusValue(r.FeedIntakeStatus ?? "NODATA", Html.Num(r.FeedIntake, 1)) <div class="small text-muted">std @Html.Num(r.StdFeedIntake, 1)</div></td> }</tr>
+                    <tr><td>Uniformity %</td>@foreach (var r in rows) { <td class="text-end">@Html.StatusValue(r.UniformityStatus ?? "NODATA", Html.Num(r.Uniformity, 1)) <div class="small text-muted">std @Html.Num(r.StdUniformity, 1)</div></td> }</tr>
+                    <tr><td>Weekly mortality %</td>@foreach (var r in rows) { <td class="text-end">@Html.StatusValue(r.MortalityStatus ?? "NODATA", Html.Num(r.Mortality, 2)) <div class="small text-muted">std @Html.Num(r.StdMortality, 2)</div></td> }</tr>
+                    <tr><td>Nutrients out of standard</td>@foreach (var r in rows) { <td class="text-end">@(r.NutritionChecked > 0 ? r.NutritionOut + " / " + r.NutritionChecked : "-")</td> }</tr>
+                    <tr class="fw-semibold"><td>Performance score</td>@foreach (var r in rows) { <td class="text-end">@Html.Num(r.PerformanceScore, 0) @Html.StatusBadge(r.OverallStatusCode, r.BandName)</td> }</tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section scripts {
+@if (rows.Count > 0)
+{
+    <script>
+        $(function () {
+            var rows = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(rows.Select(r => new { n = r.FlockNumber, bw = r.BodyWeight, sbw = r.StdBodyWeight, bst = r.BodyWeightStatus, sc = r.PerformanceScore, st = r.OverallStatusCode })));
+            var labels = rows.map(function (r) { return r.n; });
+            fwm.barChart('cmpBw', labels, [
+                { label: 'Actual', data: rows.map(function (r) { return r.bw; }), backgroundColor: rows.map(function (r) { return fwm.color(r.bst); }) },
+                { label: 'Standard', data: rows.map(function (r) { return r.sbw; }), backgroundColor: 'rgba(13,110,253,0.35)' }
+            ]);
+            fwm.barChart('cmpScore', labels, [
+                { label: 'Score', data: rows.map(function (r) { return r.sc; }), backgroundColor: rows.map(function (r) { return fwm.color(r.st); }) }
+            ], { min: 0, max: 100 });
+        });
+    </script>
+}
+}

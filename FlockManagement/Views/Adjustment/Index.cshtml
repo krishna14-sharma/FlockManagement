@@ -1,0 +1,37 @@
+@model MovementListViewModel<AdjustmentRecord>
+@{
+    ViewBag.Title = "Adjustments";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Population Adjustments" }, { "Icon", "bi-plus-slash-minus" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create", new { flockId = Model.Picker.FlockID }) }, { "CreateText", "New Adjustment" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_FlockPicker", Model.Picker)
+@Html.Partial("_MovementDates", Model.Picker, new ViewDataDictionary { { "FromDate", Model.FromDate }, { "ToDate", Model.ToDate } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr><th>Date</th><th class="text-end">Week</th><th>Flock</th><th class="text-end">Female</th><th class="text-end">Male</th><th>Reason</th><th>Approved By</th><th>Entered By</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Date" class="text-nowrap">@a.AdjustmentDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Week" class="text-end">@a.WeekNo</td>
+                        <td data-label="Flock"><a href="@Url.Action("Details", "Flock", new { id = a.FlockID })" class="fw-semibold">@a.FlockNumber</a></td>
+                        <td data-label="Female" class="text-end @(a.FemaleAdjustment < 0 ? "text-danger" : "text-success")">@a.FemaleAdjustment.ToString("+#,0;-#,0;0")</td>
+                        <td data-label="Male" class="text-end @(a.MaleAdjustment < 0 ? "text-danger" : "text-success")">@a.MaleAdjustment.ToString("+#,0;-#,0;0")</td>
+                        <td data-label="Reason">@a.Reason</td>
+                        <td data-label="Approved By">@a.ApprovedByName</td>
+                        <td data-label="Entered By" class="small text-muted">@a.CreatedByName<br />@a.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">No adjustments found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

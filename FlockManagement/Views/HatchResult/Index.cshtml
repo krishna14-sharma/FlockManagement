@@ -1,0 +1,61 @@
+@model HatchResultListViewModel
+@{
+    ViewBag.Title = "Hatch Results";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Hatch Results" }, { "Icon", "bi-egg" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create", new { flockId = Model.Picker.FlockID }) }, { "CreateText", "Add Hatch Result" }, { "ExportTarget", "#grid" } })
+
+<div class="alert alert-light border small d-flex gap-2">
+    <i class="bi bi-info-circle text-brand"></i>
+    <div>Record each setting against the <strong>week the eggs were laid in</strong>. Enter the infertile eggs after candling to get <strong>fertility</strong>; add the hatch date and chicks hatched after the hatch to get <strong>hatchability</strong>. Both then appear on that week's analysis and production sheet.</div>
+</div>
+
+@Html.Partial("_FlockPicker", Model.Picker)
+@Html.Partial("_MovementDates", Model.Picker, new ViewDataDictionary { { "FromDate", Model.FromDate }, { "ToDate", Model.ToDate } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Flock</th><th class="text-end">Egg Week</th><th>Set Date</th><th class="text-end">Eggs Set</th><th class="text-end">Infertile</th>
+                    <th class="text-end">Fertility %</th><th>Hatch Date</th><th class="text-end">Dead in Shell</th><th class="text-end">Chicks</th>
+                    <th class="text-end">Hatchability %</th><th class="text-end">Hatch of Fertile %</th>@if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var h in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Flock"><span class="fw-semibold">@h.FlockNumber</span><div class="small text-muted">@h.FarmName / @h.HouseName</div></td>
+                        <td data-label="Egg Week" class="text-end">@h.WeekNo</td>
+                        <td data-label="Set Date" class="text-nowrap">@h.SetDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Eggs Set" class="text-end">@h.SettableEggs.ToString("N0")</td>
+                        <td data-label="Infertile" class="text-end">@h.InfertileEggs.ToString("N0")</td>
+                        <td data-label="Fertility %" class="text-end fw-semibold">@Html.Num(h.FertilityPct, 2)</td>
+                        <td data-label="Hatch Date" class="text-nowrap">@(h.HatchDate.HasValue ? h.HatchDate.Value.ToString("dd-MMM-yyyy") : "")@if (!h.IsHatched) { <span class="badge text-bg-light border">In incubation</span> }</td>
+                        <td data-label="Dead in Shell" class="text-end">@(h.IsHatched ? h.DeadInShell.ToString("N0") : "-")</td>
+                        <td data-label="Chicks" class="text-end">@(h.IsHatched ? h.HatchedChicks.ToString("N0") : "-")</td>
+                        <td data-label="Hatchability %" class="text-end fw-semibold">@Html.Num(h.HatchabilityPct, 2)</td>
+                        <td data-label="Hatch of Fertile %" class="text-end">@Html.Num(h.HatchOfFertilePct, 2)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" title="Edit" href="@Url.Action("Edit", new { id = h.HatchResultID })"><i class="bi bi-pencil"></i></a>
+                                @using (Html.BeginForm("Delete", "HatchResult", new { id = h.HatchResultID, flockId = Model.Picker.FlockID }, FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" data-confirm="Delete this hatch result? Fertility and hatchability of week @h.WeekNo will be recalculated."><i class="bi bi-trash"></i></button>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="12" class="text-center text-muted py-4">No hatch results found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

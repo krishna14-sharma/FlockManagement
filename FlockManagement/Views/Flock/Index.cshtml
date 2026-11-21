@@ -1,0 +1,91 @@
+@model FlockListViewModel
+@{
+    ViewBag.Title = "Flocks";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Flock Master" }, { "Icon", "bi-egg" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "New Flock" }, { "ExportTarget", "#grid" } })
+
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4 col-xl-3">
+            <label class="form-label small text-muted mb-1" for="search">Flock / Lot No.</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-control" id="search" name="search" value="@Model.Search" maxlength="50" />
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <label class="form-label small text-muted mb-1" for="farmId">Farm</label>
+            @Html.DropDownList("farmId", Model.Farms, new { @class = "form-select", id = "farmId", data_cascade_target = "#houseId", data_cascade_url = Url.Action("Houses", "Lookup"), data_cascade_empty = "All houses" })
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <label class="form-label small text-muted mb-1" for="houseId">House</label>
+            @Html.DropDownList("houseId", Model.Houses, new { @class = "form-select", id = "houseId" })
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <label class="form-label small text-muted mb-1" for="birdTypeId">Bird Type</label>
+            @Html.DropDownList("birdTypeId", Model.BirdTypes, new { @class = "form-select", id = "birdTypeId" })
+        </div>
+        <div class="col-6 col-md-4 col-xl-1">
+            <label class="form-label small text-muted mb-1" for="lotId">Lot</label>
+            @Html.DropDownList("lotId", Model.Lots, new { @class = "form-select", id = "lotId" })
+        </div>
+        <div class="col-6 col-md-2 col-xl-1">
+            <label class="form-label small text-muted mb-1" for="status">Status</label>
+            @Html.DropDownList("status", Model.Statuses, new { @class = "form-select", id = "status" })
+        </div>
+        <div class="col-6 col-md-2 col-xl-1 d-grid">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i><span class="d-xl-none ms-1">Apply</span></button>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Flock</th>
+                    <th>Lot</th>
+                    <th>Bird Type / Breed</th>
+                    <th>Farm / House</th>
+                    <th>Placed</th>
+                    <th class="text-end">Age (wk)</th>
+                    <th class="text-end">Placed Birds</th>
+                    <th class="text-end">Live Birds</th>
+                    <th class="text-end">Livability</th>
+                    <th>Status</th>
+                    <th class="text-end no-export">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Flock"><a class="fw-semibold" href="@Url.Action("Details", new { id = f.FlockID })">@f.FlockNumber</a></td>
+                        <td data-label="Lot">@f.LotNumber</td>
+                        <td data-label="Bird Type / Breed">@f.BirdTypeName<br /><small class="text-muted">@f.BreedName</small></td>
+                        <td data-label="Farm / House">@f.FarmName<br /><small class="text-muted">@f.HouseName</small></td>
+                        <td data-label="Placed">@f.PlacementDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Age (wk)" class="text-end">@(f.Status == "Active" ? f.CurrentAge.ToString() : "-")</td>
+                        <td data-label="Placed Birds" class="text-end">@f.InitialBirdCount.ToString("N0")</td>
+                        <td data-label="Live Birds" class="text-end">@f.TotalBirdCount.ToString("N0")</td>
+                        <td data-label="Livability" class="text-end">@f.LivabilityPct.ToString("0.00")%</td>
+                        <td data-label="Status">@Html.FlockStatusBadge(f.Status)</td>
+                        <td class="text-end text-nowrap no-export">
+                            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", new { id = f.FlockID })" title="View"><i class="bi bi-eye"></i></a>
+                            @if (Model.CanEdit)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = f.FlockID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="11" class="text-center text-muted py-4">No flocks match the filters.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

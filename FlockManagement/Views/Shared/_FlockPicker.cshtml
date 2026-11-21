@@ -1,0 +1,32 @@
+@model FlockPickerModel
+@* Farm -> House -> Flock (-> Week) selection as a GET form. *@
+<form method="get" action="@Url.Action(Model.Action, Model.Controller)" class="card card-body shadow-sm mb-3 filter-bar">
+    @foreach (var kv in Model.Extra)
+    {
+        <input type="hidden" name="@kv.Key" value="@kv.Value" />
+    }
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1" for="pkFarm">Farm</label>
+            @Html.DropDownList("farmId", Model.Farms, new { @class = "form-select", id = "pkFarm", data_cascade_target = "#pkHouse", data_cascade_url = Url.Action("Houses", "Lookup"), data_cascade_empty = "All houses", data_cascade_always = "true" })
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1" for="pkHouse">House</label>
+            @Html.DropDownList("houseId", Model.Houses, new { @class = "form-select", id = "pkHouse", data_cascade_target = "#pkFlock", data_cascade_url = Url.Action("Flocks", "Lookup"), data_cascade_param = "houseId", data_cascade_include = "farmId:#pkFarm", data_cascade_empty = "-- Select flock --", data_cascade_always = "true" })
+        </div>
+        <div class="col-8 @(Model.ShowWeek ? "col-md-3" : "col-md-4")">
+            <label class="form-label small text-muted mb-1" for="pkFlock">Flock</label>
+            @Html.DropDownList("flockId", Model.Flocks, new { @class = "form-select", id = "pkFlock" })
+        </div>
+        @if (Model.ShowWeek)
+        {
+            <div class="col-4 col-md-1">
+                <label class="form-label small text-muted mb-1" for="pkWeek">Week</label>
+                @Html.DropDownList("weekNo", Model.Weeks, new { @class = "form-select", id = "pkWeek", data_autosubmit = "true" })
+            </div>
+        }
+        <div class="col-4 col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-right-circle me-1"></i>Open</button>
+        </div>
+    </div>
+</form>

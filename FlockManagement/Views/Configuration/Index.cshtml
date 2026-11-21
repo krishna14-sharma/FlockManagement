@@ -1,0 +1,171 @@
+@model ConfigurationViewModel
+@{
+    ViewBag.Title = "Configuration";
+    var c = Model.Config;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    var tabs = new[] { new { K = "tolerance", T = "Tolerances", I = "bi-sliders" }, new { K = "score", T = "Score & Bands", I = "bi-trophy" }, new { K = "settings", T = "System Settings", I = "bi-gear" }, new { K = "modules", T = "Modules", I = "bi-toggles" } };
+}
+<h1 class="h4 mb-3"><i class="bi bi-gear-wide-connected text-brand me-2"></i>Configuration</h1>
+
+<ul class="nav nav-tabs flex-nowrap overflow-auto">
+    @foreach (var t in tabs)
+    {
+        <li class="nav-item"><a class="nav-link text-nowrap @(Model.Tab == t.K ? "active" : "")" href="@Url.Action("Index", new { tab = t.K })"><i class="bi @t.I me-1"></i>@t.T</a></li>
+    }
+</ul>
+<div class="card card-body border-top-0 rounded-0 rounded-bottom shadow-sm">
+@switch (Model.Tab)
+{
+    case "score":
+        <div class="row g-4">
+            <div class="col-xl-7">
+                <h2 class="h6">Score components</h2>
+                <p class="small text-muted">Each component scores 100 when inside the standard range and falls to 0 at the &ldquo;zero-score deviation&rdquo;. The weekly score is the weighted average of the components that have data. Weights should add up to 100.</p>
+                @using (Html.BeginForm("Weights", "Configuration"))
+                {
+                    @Html.AntiForgeryToken()
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light"><tr><th>Component</th><th class="text-end" style="width:140px">Weight %</th><th class="text-end" style="width:180px">Zero-score deviation %</th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < c.Weights.Count; i++)
+                            {
+                                var w = c.Weights[i];
+                                <tr>
+                                    <td>@w.ComponentName
+                                        <input type="hidden" name="rows[@i].ScoreWeightageID" value="@w.ScoreWeightageID" />
+                                        <input type="hidden" name="rows[@i].ComponentCode" value="@w.ComponentCode" />
+                                        <input type="hidden" name="rows[@i].ComponentName" value="@w.ComponentName" /></td>
+                                    <td><input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-end js-weight" name="rows[@i].Weightage" value="@w.Weightage.ToString("0.##", inv)" /></td>
+                                    <td><input type="number" step="0.5" min="1" max="100" class="form-control form-control-sm text-end" name="rows[@i].ZeroScoreDeviationPct" value="@w.ZeroScoreDeviationPct.ToString("0.##", inv)" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot><tr><th>Total</th><th class="text-end" id="weightTotal"></th><th></th></tr></tfoot>
+                    </table>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save weights</button>
+                }
+            </div>
+            <div class="col-xl-5">
+                <h2 class="h6">Score bands</h2>
+                <p class="small text-muted">Bands must not overlap. The band's status colours the dashboard and triggers a score alert when Critical.</p>
+                @using (Html.BeginForm("Bands", "Configuration"))
+                {
+                    @Html.AntiForgeryToken()
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light"><tr><th>Band</th><th class="text-end">From</th><th class="text-end">To</th><th style="min-width:150px">Status</th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < c.Bands.Count; i++)
+                            {
+                                var b = c.Bands[i];
+                                <tr>
+                                    <td><input type="hidden" name="rows[@i].ScoreBandID" value="@b.ScoreBandID" /><input class="form-control form-control-sm" name="rows[@i].BandName" value="@b.BandName" maxlength="50" /></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm text-end" name="rows[@i].MinScore" value="@b.MinScore.ToString("0.##", inv)" /></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm text-end" name="rows[@i].MaxScore" value="@b.MaxScore.ToString("0.##", inv)" /></td>
+                                    <td>
+                                        <select class="form-select form-select-sm" name="rows[@i].StatusCode">
+                                            @foreach (var s in Model.Statuses) { <option value="@s.StatusCode" @(s.StatusCode == b.StatusCode ? "selected" : null)>@s.StatusName</option> }
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save bands</button>
+                }
+            </div>
+        </div>
+        break;
+
+    case "settings":
+        <p class="small text-muted">Changes apply to entries saved or recalculated after saving.</p>
+        using (Html.BeginForm("Settings", "Configuration"))
+        {
+            @Html.AntiForgeryToken()
+            <div class="table-responsive">
+                <table class="table table-sm align-middle table-stack">
+                    <thead class="table-light"><tr><th>Setting</th><th style="width:220px">Value</th><th>Description</th></tr></thead>
+                    <tbody>
+                        @for (var i = 0; i < c.Settings.Count; i++)
+                        {
+                            var s = c.Settings[i];
+                            <tr>
+                                <td data-label="Setting" class="font-monospace small">@s.SettingKey<input type="hidden" name="rows[@i].SettingKey" value="@s.SettingKey" /><input type="hidden" name="rows[@i].DataType" value="@s.DataType" /></td>
+                                <td data-label="Value">
+                                    @if (s.DataType == "BOOL")
+                                    {
+                                        <select class="form-select form-select-sm" name="rows[@i].SettingValue"><option value="true" @(s.SettingValue == "true" || s.SettingValue == "1" ? "selected" : null)>Yes</option><option value="false" @(s.SettingValue == "true" || s.SettingValue == "1" ? null : "selected")>No</option></select>
+                                    }
+                                    else
+                                    {
+                                        <input class="form-control form-control-sm" type="@(s.DataType == "INT" || s.DataType == "DECIMAL" ? "number" : "text")" step="any" name="rows[@i].SettingValue" value="@s.SettingValue" />
+                                    }
+                                </td>
+                                <td data-label="Description" class="small text-muted">@s.Description</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save settings</button>
+        }
+        break;
+
+    case "modules":
+        <p class="small text-muted">Switch optional modules on or off. Disabled modules are hidden from the menu for everyone.</p>
+        using (Html.BeginForm("Modules", "Configuration"))
+        {
+            @Html.AntiForgeryToken()
+            for (var i = 0; i < c.Modules.Count; i++)
+            {
+                var m = c.Modules[i];
+                <div class="form-check form-switch mb-2">
+                    <input type="hidden" name="rows[@i].ModuleCode" value="@m.ModuleCode" />
+                    <input type="hidden" name="rows[@i].ModuleName" value="@m.ModuleName" />
+                    <input class="form-check-input" type="checkbox" role="switch" id="mod_@i" name="rows[@i].IsEnabled" value="true" @(m.IsEnabled ? "checked" : null) />
+                    <input type="hidden" name="rows[@i].IsEnabled" value="false" />
+                    <label class="form-check-label" for="mod_@i">@m.ModuleName <span class="text-muted small font-monospace">@m.ModuleCode</span></label>
+                </div>
+            }
+            <button type="submit" class="btn btn-primary btn-sm mt-2"><i class="bi bi-save me-1"></i>Save modules</button>
+        }
+        break;
+
+    default:
+        <p class="small text-muted">When a standard has no Min / Max, a parameter is <strong>Within</strong> while its variance is inside the warning %, and <strong>Critical</strong> beyond the critical % (in the unfavourable direction). The row without a parameter is the default for all parameters.</p>
+        using (Html.BeginForm("Tolerances", "Configuration"))
+        {
+            @Html.AntiForgeryToken()
+            <table class="table table-sm align-middle" style="max-width:720px">
+                <thead class="table-light"><tr><th>Parameter</th><th class="text-end" style="width:160px">Warning %</th><th class="text-end" style="width:160px">Critical %</th></tr></thead>
+                <tbody>
+                    @for (var i = 0; i < c.Tolerances.Count; i++)
+                    {
+                        var t = c.Tolerances[i];
+                        <tr>
+                            <td>@(t.ParameterName ?? "Default (all parameters)")
+                                <input type="hidden" name="rows[@i].ToleranceID" value="@t.ToleranceID" />
+                                <input type="hidden" name="rows[@i].ParameterID" value="@t.ParameterID" /></td>
+                            <td><input type="number" step="0.1" min="0" class="form-control form-control-sm text-end" name="rows[@i].WarningPct" value="@t.WarningPct.ToString("0.##", inv)" /></td>
+                            <td><input type="number" step="0.1" min="0" class="form-control form-control-sm text-end" name="rows[@i].CriticalPct" value="@t.CriticalPct.ToString("0.##", inv)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save tolerances</button>
+        }
+        break;
+}
+</div>
+
+@section scripts {
+<script>
+    $(function () {
+        function total() {
+            var t = 0;
+            $('.js-weight').each(function () { t += fwm.parseNum($(this).val()) || 0; });
+            $('#weightTotal').html(t.toFixed(1) + (Math.abs(t - 100) < 0.01 ? '' : ' <span class="text-danger small">(should be 100)</span>'));
+        }
+        $(document).on('input', '.js-weight', total); total();
+    });
+</script>
+}

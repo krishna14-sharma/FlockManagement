@@ -1,0 +1,172 @@
+@model AnalysisDashboardViewModel
+@{
+    ViewBag.Title = "Dashboard";
+    var k = Model.Data.Kpis;
+    var f = Model.Filter;
+    var flocks = Model.Data.Flocks;
+    var withData = flocks.Where(x => x.HasData).ToList();
+}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Flock Performance Dashboard</h1>
+        <div class="text-muted small">Welcome, @Model.UserFullName &middot; @Model.RoleName &middot; @DateTime.Today.ToString("dddd, dd MMM yyyy")</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#dashFilters"><i class="bi bi-sliders me-1"></i>Filters</button>
+</div>
+
+<form method="get" id="dashFilters" class="collapse @(f.FarmID.HasValue || f.HouseID.HasValue || f.BirdTypeID.HasValue || f.FlockID.HasValue || f.LotID.HasValue || f.AsOfDate.HasValue || f.WeekNo.HasValue ? "show" : "") card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Farm</label>
+            @Html.DropDownList("FarmID", f.Farms, new { @class = "form-select form-select-sm", id = "dFarm", data_cascade_target = "#dHouse", data_cascade_url = Url.Action("Houses", "Lookup"), data_cascade_empty = "All houses", data_cascade_always = "true" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">House</label>
+            @Html.DropDownList("HouseID", f.Houses, new { @class = "form-select form-select-sm", id = "dHouse", data_cascade_target = "#dFlock", data_cascade_url = Url.Action("Flocks", "Lookup"), data_cascade_param = "houseId", data_cascade_include = "farmId:#dFarm", data_cascade_empty = "All flocks", data_cascade_always = "true" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Bird Type</label>
+            @Html.DropDownList("BirdTypeID", f.BirdTypes, new { @class = "form-select form-select-sm" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Flock</label>
+            @Html.DropDownList("FlockID", f.Flocks, new { @class = "form-select form-select-sm", id = "dFlock" })
+        </div>
+        <div class="col-6 col-md-1">
+            <label class="form-label small text-muted mb-1">Lot</label>
+            @Html.DropDownList("LotID", f.Lots, new { @class = "form-select form-select-sm" })
+        </div>
+        <div class="col-6 col-md-1">
+            <label class="form-label small text-muted mb-1">Week</label>
+            <input type="number" class="form-control form-control-sm" name="WeekNo" value="@f.WeekNo" min="0" max="120" placeholder="Latest" />
+        </div>
+        <div class="col-6 col-md-1">
+            <label class="form-label small text-muted mb-1">As of</label>
+            <input type="date" class="form-control form-control-sm" name="AsOfDate" value="@(f.AsOfDate.HasValue ? f.AsOfDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+        <div class="col-6 col-md-1 d-grid"><button type="submit" class="btn btn-sm btn-primary">Apply</button></div>
+    </div>
+</form>
+
+@functions {
+    IHtmlString Kpi(string label, string icon, string value, string sub, string border, string href)
+    {
+        var body = "<div class=\"kpi-label\"><i class=\"bi " + icon + " me-1\"></i>" + label + "</div><div class=\"kpi-value\">" + value + "</div>"
+                 + (string.IsNullOrEmpty(sub) ? "" : "<div class=\"kpi-sub small text-muted\">" + sub + "</div>");
+        var card = "<div class=\"card kpi-card h-100 border-start border-4 " + border + "\"><div class=\"card-body\">" + body + "</div></div>";
+        if (!string.IsNullOrEmpty(href)) card = "<a class=\"text-decoration-none text-reset d-block h-100\" href=\"" + href + "\">" + card + "</a>";
+        return new HtmlString("<div class=\"col\">" + card + "</div>");
+    }
+}
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-3">
+    @Kpi("Active flocks", "bi-egg", k.ActiveFlocks.ToString("N0"), k.FlocksWithData + " with data", "border-primary", Model.CanSeeFlocks ? Url.Action("Index", "Flock") : null)
+    @Kpi("Live birds", "bi-people", k.TotalBirds.ToString("N0"), null, "border-primary", null)
+    @Kpi("Avg body weight", "bi-speedometer2", Html.Num(k.AvgBodyWeight, 0) + " <small>g</small>", k.AvgBodyWeightVarPct.HasValue ? Html.Pct(k.AvgBodyWeightVarPct, 1) + " vs standard" : null, "border-success", Url.Action("Weight", "Analysis"))
+    @Kpi("Avg weight gain", "bi-arrow-up-right", Html.Num(k.AvgWeightGain, 0) + " <small>g/wk</small>", null, "border-success", null)
+    @Kpi("Avg feed intake", "bi-basket", Html.Num(k.AvgFeedIntake, 1) + " <small>g/b/d</small>", null, "border-success", Url.Action("Feed", "Analysis"))
+    @Kpi("Avg uniformity", "bi-distribute-vertical", Html.Num(k.AvgUniformity, 1) + " <small>%</small>", null, "border-info", Url.Action("Uniformity", "Analysis"))
+    @Kpi("Avg weekly mortality", "bi-activity", Html.Num(k.AvgMortalityPct, 2) + " <small>%</small>", null, "border-info", Url.Action("Mortality", "Analysis"))
+    @Kpi("Avg performance score", "bi-trophy", Html.Num(k.AvgScore, 0) + " <small>/100</small>", null, "border-info", Url.Action("StandardVsActual", "Analysis"))
+    @Kpi("Flocks off standard", "bi-exclamation-triangle", (k.FlocksBelowStandard + k.FlocksAboveStandard).ToString("N0"), k.FlocksBelowStandard + " below &middot; " + k.FlocksAboveStandard + " above (body weight)", "border-warning", Url.Action("Exceptions", "Analysis"))
+    @Kpi("Critical flocks / open alerts", "bi-bell", "<span class=\"text-danger\">" + k.CriticalFlocks + "</span> <small>/</small> " + k.OpenAlerts, null, "border-danger", Url.Action("Index", "Alert"))
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="small text-muted">Trend charts for flock:</span>
+            <form method="get" class="d-flex gap-2">
+                <input type="hidden" name="FarmID" value="@f.FarmID" /><input type="hidden" name="HouseID" value="@f.HouseID" /><input type="hidden" name="BirdTypeID" value="@f.BirdTypeID" />
+                <input type="hidden" name="FlockID" value="@f.FlockID" /><input type="hidden" name="LotID" value="@f.LotID" /><input type="hidden" name="WeekNo" value="@f.WeekNo" />
+                <input type="hidden" name="AsOfDate" value="@(f.AsOfDate.HasValue ? f.AsOfDate.Value.ToString("yyyy-MM-dd") : "")" />
+                @Html.DropDownList("ChartFlockID", f.ChartFlocks, new { @class = "form-select form-select-sm", id = "chartFlock", data_autosubmit = "true" })
+            </form>
+            <span class="small text-muted">(defaults to the lowest-scoring flock; click a point to open that week)</span>
+        </div>
+    </div>
+    @foreach (var c in new[] { new { Id = "cBw", T = "Body weight vs standard" }, new { Id = "cFeed", T = "Feed intake vs standard" }, new { Id = "cUni", T = "Uniformity vs standard" }, new { Id = "cMort", T = "Weekly mortality vs standard" }, new { Id = "cScore", T = "Performance score" } })
+    {
+        <div class="col-lg-6 @(c.Id == "cScore" ? "col-xl-4" : "col-xl-6")">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold small">@c.T</div>
+                <div class="card-body"><div style="height:240px"><canvas id="@c.Id"></canvas></div></div>
+            </div>
+        </div>
+    }
+    <div class="col-lg-6 col-xl-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold small">Flocks by overall status</div>
+            <div class="card-body"><div style="height:240px"><canvas id="cStatus"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-6 col-xl-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold small">Score by flock</div>
+            <div class="card-body"><div style="height:240px"><canvas id="cFlockScore"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold small">Body weight variance % from standard, by flock</div>
+            <div class="card-body"><div style="height:260px"><canvas id="cBwVar"></canvas></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Latest week of every active flock</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-export-csv="#matrix" data-export-name="Dashboard flocks"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+    </div>
+    @Html.Partial("~/Views/Analysis/_FlockMatrix.cshtml", flocks)
+</div>
+
+@section scripts {
+<script>
+    $(function () {
+        var flocks = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(withData.Select(x => new { n = x.FlockNumber, sc = x.PerformanceScore, st = x.OverallStatusCode, bv = x.BodyWeightVarPct, bst = x.BodyWeightStatus, id = x.FlockWeeklyID })));
+        var weeklyUrl = '@Url.Action("Weekly", "Analysis")/';
+        var openWeek = function (list) { return function (e, els) { if (els.length) { var p = list[els[0].index]; if (p && p.id) location.href = weeklyUrl + p.id; } }; };
+
+        // status distribution
+        var counts = {};
+        flocks.forEach(function (f) { var s = f.st || 'NODATA'; counts[s] = (counts[s] || 0) + 1; });
+        var codes = Object.keys(counts);
+        if (window.Chart && codes.length) {
+            new Chart(document.getElementById('cStatus'), {
+                type: 'doughnut',
+                data: { labels: codes.map(function (c) { return fwm.statusDef(c).name; }), datasets: [{ data: codes.map(function (c) { return counts[c]; }), backgroundColor: codes.map(function (c) { return fwm.color(c); }) }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
+            });
+        }
+
+        var byScore = flocks.slice().sort(function (a, b) { return (a.sc || 0) - (b.sc || 0); });
+        var c1 = fwm.barChart('cFlockScore', byScore.map(function (f) { return f.n; }),
+            [{ label: 'Score', data: byScore.map(function (f) { return f.sc; }), backgroundColor: byScore.map(function (f) { return fwm.color(f.st); }) }], { min: 0, max: 100 });
+        if (c1) c1.options.onClick = openWeek(byScore);
+
+        var bv = flocks.filter(function (f) { return f.bv !== null; });
+        var c2 = fwm.barChart('cBwVar', bv.map(function (f) { return f.n; }),
+            [{ label: 'Variance %', data: bv.map(function (f) { return f.bv; }), backgroundColor: bv.map(function (f) { return fwm.color(f.bst); }) }], { yTitle: '% vs standard' });
+        if (c2) c2.options.onClick = openWeek(bv);
+
+        var chartFlock = $('#chartFlock').val();
+        if (chartFlock) {
+            fwm.loadTrend('@Url.Action("TrendData", "Analysis")', chartFlock).done(function (t) {
+                var draw = function (canvas, code, opts) {
+                    var s = fwm.findSeries(t, code);
+                    if (!s) return;
+                    opts = opts || {};
+                    opts.onClick = function (e, els) { if (els.length) { var p = s.points[els[0].index]; if (p && p.id) location.href = weeklyUrl + p.id; } };
+                    fwm.stdActualChart(canvas, s, opts);
+                };
+                draw('cBw', 'BODY_WEIGHT');
+                draw('cFeed', 'FEED_INTAKE');
+                draw('cUni', 'UNIFORMITY');
+                draw('cMort', 'MORTALITY', { bar: true, zero: true });
+                draw('cScore', 'SCORE', { zero: true, noBand: true });
+            });
+        }
+    });
+</script>
+}

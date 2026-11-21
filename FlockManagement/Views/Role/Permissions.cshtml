@@ -1,0 +1,66 @@
+@model RolePermissionsViewModel
+@{
+    ViewBag.Title = "Permissions - " + Model.RoleName;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-ui-checks-grid text-brand me-2"></i>Permissions: @Model.RoleName</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Index")"><i class="bi bi-arrow-left me-1"></i>Roles</a>
+</div>
+
+@using (Html.BeginForm("Permissions", "Role", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.RoleID)
+    <div class="row g-3">
+        @foreach (var group in Model.Groups)
+        {
+            var groupId = "grp-" + group.Key.Replace(" ", "").Replace("/", "");
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">@group.Key</span>
+                        @if (Model.CanEdit)
+                        {
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="@groupId" data-check-all="@groupId" />
+                                <label class="form-check-label small" for="@groupId">All</label>
+                            </div>
+                        }
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var p in group)
+                        {
+                            var id = "perm-" + p.PermissionID;
+                            <li class="list-group-item">
+                                <div class="form-check">
+                                    <input class="form-check-input @groupId" type="checkbox" name="SelectedIds" value="@p.PermissionID" id="@id"
+                                           @(p.IsGranted ? "checked" : null) @(Model.CanEdit ? null : "disabled") />
+                                    <label class="form-check-label" for="@id">@p.PermissionName <code class="small text-muted ms-1">@p.PermissionCode</code></label>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+    if (Model.CanEdit)
+    {
+        <div class="d-flex justify-content-end mt-3">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Permissions</button>
+        </div>
+    }
+}
+
+@section scripts {
+<script>
+    $('[data-check-all]').each(function () {
+        var cls = '.' + $(this).data('check-all');
+        var $all = $(this);
+        function sync() { var $b = $(cls); $all.prop('checked', $b.length > 0 && $b.filter(':checked').length === $b.length); }
+        $all.on('change', function () { $(cls).prop('checked', this.checked); });
+        $(cls).on('change', sync);
+        sync();
+    });
+</script>
+}

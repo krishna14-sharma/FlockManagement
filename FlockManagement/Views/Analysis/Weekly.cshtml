@@ -1,0 +1,230 @@
+@model WeeklyAnalysisViewModel
+@{
+    ViewBag.Title = "Weekly Analysis";
+    var a = Model.Analysis;
+    var w = a != null ? a.Week : null;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-clipboard-data text-brand me-2"></i>Flock Weight Management Analysis</h1>
+    @if (w != null)
+    {
+        <div class="d-flex gap-2 no-print">
+            <a class="btn btn-sm btn-outline-secondary @(Model.PrevWeekID.HasValue ? "" : "disabled")" href="@(Model.PrevWeekID.HasValue ? Url.Action("Weekly", new { id = Model.PrevWeekID }) : "#")"><i class="bi bi-chevron-left"></i> Week @(w.WeekNo - 1)</a>
+            <a class="btn btn-sm btn-outline-secondary @(Model.NextWeekID.HasValue ? "" : "disabled")" href="@(Model.NextWeekID.HasValue ? Url.Action("Weekly", new { id = Model.NextWeekID }) : "#")">Week @(w.WeekNo + 1) <i class="bi bi-chevron-right"></i></a>
+            @if (Model.CanEdit)
+            {
+                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Entry", "Weekly", new { flockId = w.FlockID, weekNo = w.WeekNo })"><i class="bi bi-pencil me-1"></i>Edit entry</a>
+            }
+            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Production", new { id = w.FlockWeeklyID })"><i class="bi bi-clipboard2-data me-1"></i>Production sheet</a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button>
+        </div>
+    }
+</div>
+
+<div class="no-print">@Html.Partial("_FlockPicker", Model.Picker)</div>
+
+@if (w == null)
+{
+    <div class="text-muted text-center py-5">Select a flock (and week) to see its analysis. Only weeks that have been entered can be analysed.</div>
+}
+else
+{
+    var score = w.PerformanceScore;
+    <div class="row g-3 mb-3">
+        @* A. Flock details *@
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">A. Flock details</div>
+                <div class="card-body">
+                    <div class="row g-2 small">
+                        <div class="col-6 col-md-3"><div class="text-muted">Flock / Lot</div><div class="fw-semibold">@w.FlockNumber / @w.LotNumber</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Farm / House</div><div class="fw-semibold">@w.FarmName / @w.HouseName</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Bird Type / Breed</div><div class="fw-semibold">@w.BirdTypeName / @w.BreedName</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Week / Age</div><div class="fw-semibold">Week @w.WeekNo &middot; @w.AgeInWeeks wk</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Entry date</div><div class="fw-semibold">@w.EntryDate.ToString("dd-MMM-yyyy")</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Feed</div><div class="fw-semibold">@(w.FeedTypeName ?? "-")@(w.FormulaCode != null ? " (" + w.FormulaCode + ")" : "")</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Nutrition source</div><div class="fw-semibold">@(w.NutritionSource == "L" ? "Lab analysis" + (w.LabSampleRef != null ? " " + w.LabSampleRef : "") : "Feed formula")</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Remarks</div><div>@(w.Remarks ?? "-")</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @* F. Score *@
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100 text-center">
+                <div class="card-header bg-white fw-semibold">F. Performance score</div>
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="display-5 fw-bold text-brand">@Html.Num(score, 0)<small class="fs-6 text-muted">/100</small></div>
+                    <div class="mt-1">@Html.StatusBadge(w.OverallStatusCode, w.BandName)</div>
+                    <div class="row g-1 small mt-3">
+                        @foreach (var c in new[] { new { N = "Body weight", V = w.BodyWeightScore }, new { N = "Weight gain", V = w.WeightGainScore }, new { N = "Feed intake", V = w.FeedIntakeScore }, new { N = "Uniformity", V = w.UniformityScore }, new { N = "Mortality", V = w.MortalityScore }, new { N = "Nutrition", V = w.NutritionScore } })
+                        {
+                            <div class="col-6 d-flex justify-content-between px-2"><span class="text-muted">@c.N</span><span class="fw-semibold">@Html.Num(c.V, 0)</span></div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        @* B. Population *@
+        <div class="col-md-6 col-xl-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">B. Population &amp; mortality</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr><td>Opening birds</td><td class="text-end">@w.OpeningPopulation.ToString("N0")</td></tr>
+                            <tr><td>Received</td><td class="text-end">@w.BirdsReceived.ToString("N0")</td></tr>
+                            <tr><td>Mortality (F / M)</td><td class="text-end">@w.TotalMortality.ToString("N0") <span class="text-muted">(@w.FemaleMortality / @w.MaleMortality)</span></td></tr>
+                            <tr><td>Culling</td><td class="text-end">@((w.FemaleCulling + w.MaleCulling).ToString("N0"))</td></tr>
+                            <tr><td>Transferred out</td><td class="text-end">@w.TransferOut.ToString("N0")</td></tr>
+                            <tr class="fw-semibold"><td>Closing birds</td><td class="text-end">@w.ClosingPopulation.ToString("N0")</td></tr>
+                            <tr><td>Weekly mortality</td><td class="text-end">@Html.Num(w.MortalityPercentage, 2)% <span class="text-muted">std @Html.Num(w.StandardMortalityPct, 2)%</span></td></tr>
+                        </tbody>
+                    </table>
+                    @if (w.MortalityReasons.Count > 0)
+                    {
+                        <div class="small px-3 py-2 border-top"><span class="text-muted">By reason:</span> @string.Join(", ", w.MortalityReasons.Select(r => r.ReasonName + " " + r.BirdCount + (r.Sex == "M" ? " M" : " F")))</div>
+                    }
+                </div>
+            </div>
+        </div>
+        @* C. Body weight & uniformity *@
+        <div class="col-md-6 col-xl-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">C. Body weight &amp; uniformity</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr><td>Average body weight</td><td class="text-end fw-semibold">@Html.Num(w.ActualBodyWeight, 0) g</td></tr>
+                            <tr><td>Standard</td><td class="text-end">@Html.Num(w.StandardBodyWeight, 0) g</td></tr>
+                            <tr><td>Weight gain (std)</td><td class="text-end">@Html.Num(w.ActualWeightGain, 0) g <span class="text-muted">(@Html.Num(w.StandardWeightGain, 0))</span></td></tr>
+                            <tr><td>Birds weighed</td><td class="text-end">@(w.SampleSize.HasValue ? w.SampleSize.Value.ToString("N0") : "-")</td></tr>
+                            <tr><td>Min / Max</td><td class="text-end">@Html.Num(w.MinBodyWeight, 0) / @Html.Num(w.MaxBodyWeight, 0) g</td></tr>
+                            <tr><td>CV %</td><td class="text-end">@Html.Num(w.CVPercentage, 1)</td></tr>
+                            <tr><td>Uniformity (&plusmn;@a.UniformityRangePct.ToString("0.#")%)</td><td class="text-end fw-semibold">@Html.Num(w.UniformityPercentage, 1)% @if (a.UniformityGrade != null) { <span class="badge text-bg-light border">@a.UniformityGrade</span> }</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @* D. Feed *@
+        <div class="col-md-6 col-xl-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">D. Feed</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr><td>Feed given</td><td class="text-end">@Html.Num(w.TotalFeedKg, 2) kg</td></tr>
+                            <tr><td>Wastage</td><td class="text-end">@Html.Num(w.FeedWastageKg, 2) kg</td></tr>
+                            <tr><td>Intake (g/bird/day)</td><td class="text-end fw-semibold">@Html.Num(w.ActualFeedIntake, 1)</td></tr>
+                            <tr><td>Standard intake</td><td class="text-end">@Html.Num(w.StandardFeedIntake, 1)</td></tr>
+                        </tbody>
+                    </table>
+                    @if (w.FeedLines.Count > 0)
+                    {
+                        <table class="table table-sm mb-0 small border-top">
+                            <thead class="table-light"><tr><th>Feed</th><th>For</th><th class="text-end">kg</th><th class="text-end">g/b/d</th></tr></thead>
+                            <tbody>
+                                @foreach (var f in w.FeedLines)
+                                {
+                                    <tr><td>@f.FeedTypeName @(f.FormulaCode != null ? "(" + f.FormulaCode + ")" : "")</td><td>@(f.Sex == "B" ? "All" : f.Sex)</td><td class="text-end">@f.QuantityKg.ToString("N2")</td><td class="text-end">@Html.Num(f.IntakeGPerBirdDay, 1)</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* E. Standard vs actual - spec parameter table *@
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">E. Standard vs actual</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary no-print" data-export-csv="#paramTable" data-export-name="Analysis @w.FlockNumber week @w.WeekNo"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0 table-stack" id="paramTable">
+                <thead class="table-light">
+                    <tr><th>Parameter</th><th>Unit</th><th class="text-end">Standard</th><th class="text-end">Min &ndash; Max</th><th class="text-end">Actual</th><th class="text-end">Variance</th><th class="text-end">Variance %</th><th>Status</th><th class="text-end">Previous Week</th><th class="text-end">Change</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var code in WeeklyAnalysisViewModel.MainOrder.Concat(a.Parameters.Where(p => !WeeklyAnalysisViewModel.MainOrder.Contains(p.ParameterCode) && (p.ActualValue.HasValue || p.StandardValue.HasValue)).OrderBy(p => p.SortOrder).Select(p => p.ParameterCode)))
+                    {
+                        var p = Model.P(code);
+                        if (p == null) { continue; }
+                        <tr>
+                            <td data-label="Parameter" class="fw-semibold">@p.ParameterName</td>
+                            <td data-label="Unit" class="text-muted">@p.UnitCode</td>
+                            <td data-label="Standard" class="text-end">@Html.Num(p.StandardValue, p.DecimalPlaces)</td>
+                            <td data-label="Min - Max" class="text-end text-muted small">@(p.MinValue.HasValue || p.MaxValue.HasValue ? Html.Num(p.MinValue, p.DecimalPlaces) + " – " + Html.Num(p.MaxValue, p.DecimalPlaces) : "-")</td>
+                            <td data-label="Actual" class="text-end fw-semibold">@Html.Num(p.ActualValue, p.DecimalPlaces)</td>
+                            <td data-label="Variance" class="text-end">@(p.Variance.HasValue ? (p.Variance.Value > 0 ? "+" : "") + Html.Num(p.Variance, p.DecimalPlaces) : "-")</td>
+                            <td data-label="Variance %" class="text-end">@(p.VariancePct.HasValue ? (p.VariancePct.Value > 0 ? "+" : "") + p.VariancePct.Value.ToString("0.0") + "%" : "-")</td>
+                            <td data-label="Status">@Html.StatusBadge(p.StatusCode)</td>
+                            <td data-label="Previous Week" class="text-end text-muted">@Html.Num(p.PreviousActual, p.DecimalPlaces)</td>
+                            <td data-label="Change" class="text-end">@(p.ChangeFromPrevious.HasValue ? (p.ChangeFromPrevious.Value > 0 ? "+" : "") + Html.Num(p.ChangeFromPrevious, p.DecimalPlaces) : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">Variance % by parameter</div>
+                <div class="card-body"><div style="height:320px"><canvas id="varChart"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Trend to this week</span>
+                    <select class="form-select form-select-sm w-auto no-print" id="trendParam">
+                        <option value="BODY_WEIGHT">Body Weight</option>
+                        <option value="FEED_INTAKE">Feed Intake</option>
+                        <option value="UNIFORMITY">Uniformity</option>
+                        <option value="MORTALITY">Mortality</option>
+                        <option value="WEIGHT_GAIN">Weight Gain</option>
+                        <option value="SCORE">Performance Score</option>
+                    </select>
+                </div>
+                <div class="card-body"><div style="height:320px"><canvas id="trendChart"></canvas></div></div>
+            </div>
+        </div>
+    </div>
+
+}
+
+@section scripts {
+@if (w != null)
+{
+    <script>
+        $(function () {
+            var params = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(a.Parameters.Where(p => p.VariancePct.HasValue).OrderBy(p => p.SortOrder).Select(p => new { name = p.ParameterName, v = p.VariancePct, st = p.StatusCode })));
+            fwm.barChart('varChart', params.map(function (p) { return p.name; }),
+                [{ label: 'Variance %', data: params.map(function (p) { return p.v; }), backgroundColor: params.map(function (p) { return fwm.color(p.st); }) }],
+                { horizontal: true });
+
+            var week = @w.WeekNo, trend = null;
+            function draw() {
+                var s = fwm.findSeries(trend, $('#trendParam').val());
+                if (!s) return;
+                var cut = $.extend({}, s, { points: s.points.filter(function (p) { return p.w <= week; }) });
+                fwm.stdActualChart('trendChart', cut, {
+                    onClick: function (e, els) {
+                        if (els.length) { var p = cut.points[els[0].index]; if (p && p.id) location.href = '@Url.Action("Weekly")/' + p.id; }
+                    }
+                });
+            }
+            fwm.loadTrend('@Url.Action("TrendData")', @w.FlockID).done(function (t) { trend = t; draw(); });
+            $('#trendParam').on('change', draw);
+        });
+    </script>
+}
+}

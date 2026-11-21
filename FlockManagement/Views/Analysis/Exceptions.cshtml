@@ -1,0 +1,69 @@
+@model ExceptionsViewModel
+@{
+    ViewBag.Title = "Exceptions";
+    var groups = Model.Rows.GroupBy(r => new { r.FlockID, r.FlockNumber, r.FarmName, r.HouseName, r.BirdTypeName, r.WeekNo, r.FlockWeeklyID }).ToList();
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-exclamation-diamond text-brand me-2"></i>Exceptions &ndash; parameters out of standard</h1>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-export-csv="#excTable" data-export-name="Exceptions"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
+</div>
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1">Farm</label>
+            @Html.DropDownList("farmId", Model.Farms, new { @class = "form-select", id = "eFarm", data_cascade_target = "#eHouse", data_cascade_url = Url.Action("Houses", "Lookup"), data_cascade_empty = "All houses", data_cascade_always = "true" })
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1">House</label>
+            @Html.DropDownList("houseId", Model.Houses, new { @class = "form-select", id = "eHouse" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Bird Type</label>
+            @Html.DropDownList("birdTypeId", Model.BirdTypes, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" role="switch" name="criticalOnly" value="true" id="crit" @(Model.CriticalOnly ? "checked" : null) />
+                <label class="form-check-label" for="crit">Critical only</label>
+            </div>
+        </div>
+        <div class="col-12 col-md-2 d-grid"><button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button></div>
+    </div>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card shadow-sm kpi-card"><div class="card-body"><div class="kpi-label">Flocks with exceptions</div><div class="kpi-value">@groups.Count</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card shadow-sm kpi-card"><div class="card-body"><div class="kpi-label">Exceptions</div><div class="kpi-value">@Model.Rows.Count</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card shadow-sm kpi-card"><div class="card-body"><div class="kpi-label">Critical</div><div class="kpi-value text-danger">@Model.Rows.Count(r => r.StatusCode == "CRITICAL")</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card shadow-sm kpi-card"><div class="card-body"><div class="kpi-label">Most frequent</div><div class="kpi-value fs-6">@(Model.Rows.Count > 0 ? Model.Rows.GroupBy(r => r.ParameterName).OrderByDescending(g => g.Count()).First().Key : "-")</div></div></div></div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0 table-stack" id="excTable">
+            <thead class="table-light">
+                <tr><th>Flock</th><th>Farm / House</th><th class="text-end">Week</th><th>Parameter</th><th class="text-end">Standard</th><th class="text-end">Actual</th><th class="text-end">Variance</th><th class="text-end">Variance %</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows.OrderBy(x => x.StatusCode == "CRITICAL" ? 0 : 1).ThenBy(x => x.FlockNumber).ThenBy(x => x.ParameterName))
+                {
+                    <tr class="@(r.StatusCode == "CRITICAL" ? "table-danger" : "")">
+                        <td data-label="Flock"><a class="fw-semibold" href="@Url.Action("Weekly", new { id = r.FlockWeeklyID })">@r.FlockNumber</a><div class="small text-muted">@r.BirdTypeName</div></td>
+                        <td data-label="Farm / House" class="small">@r.FarmName<br /><span class="text-muted">@r.HouseName</span></td>
+                        <td data-label="Week" class="text-end">@r.WeekNo</td>
+                        <td data-label="Parameter">@r.ParameterName <span class="text-muted small">@r.UnitCode</span></td>
+                        <td data-label="Standard" class="text-end">@Html.Num(r.StandardValue, r.DecimalPlaces)</td>
+                        <td data-label="Actual" class="text-end fw-semibold">@Html.Num(r.ActualValue, r.DecimalPlaces)</td>
+                        <td data-label="Variance" class="text-end">@(r.Variance.HasValue ? (r.Variance.Value > 0 ? "+" : "") + Html.Num(r.Variance, r.DecimalPlaces) : "-")</td>
+                        <td data-label="Variance %" class="text-end">@Html.Pct(r.VariancePct, 1)</td>
+                        <td data-label="Status">@Html.StatusBadge(r.StatusCode)</td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-center text-success py-4"><i class="bi bi-check-circle me-1"></i>No exceptions &ndash; every active flock's latest week is within standard.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

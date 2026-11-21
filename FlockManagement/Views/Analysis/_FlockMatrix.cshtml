@@ -1,0 +1,55 @@
+@model IList<FlockSnapshot>
+@* Flock x key parameter grid, each cell coloured by status. Used by the dashboard and Standard vs Actual. *@
+@functions {
+    IHtmlString Cell(HtmlHelper h, decimal? actual, decimal? std, string status, int dec, string suffix)
+    {
+        if (!actual.HasValue) { return new HtmlString("<span class=\"text-muted\">-</span>"); }
+        var text = h.Num(actual, dec) + (suffix ?? "");
+        var title = std.HasValue ? "Standard " + h.Num(std, dec) + (suffix ?? "") : "No standard";
+        return new HtmlString("<span class=\"status-cell\" title=\"" + HttpUtility.HtmlAttributeEncode(title) + "\">" + h.StatusValue(status, text) + "</span>");
+    }
+}
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0 table-stack" id="matrix">
+        <thead class="table-light">
+            <tr>
+                <th>Flock</th><th>Farm / House</th><th class="text-end">Age</th><th class="text-end">Birds</th>
+                <th class="text-end">Body Wt (g)</th><th class="text-end">Gain (g)</th><th class="text-end">Feed g/b/d</th>
+                <th class="text-end">Uniformity</th><th class="text-end">Mortality</th><th class="text-end">Nutrition</th>
+                <th class="text-end">Score</th><th>Status</th><th class="text-end">Alerts</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in Model)
+            {
+                <tr>
+                    <td data-label="Flock">
+                        @if (f.HasData) { <a class="fw-semibold" href="@Url.Action("Weekly", "Analysis", new { id = f.FlockWeeklyID })">@f.FlockNumber</a> }
+                        else { <span class="fw-semibold">@f.FlockNumber</span> }
+                        <div class="small text-muted">@f.BirdTypeName</div>
+                    </td>
+                    <td data-label="Farm / House" class="small">@f.FarmName<br /><span class="text-muted">@f.HouseName</span></td>
+                    <td data-label="Age" class="text-end text-nowrap">@f.CurrentAge wk<div class="small text-muted">@(f.WeekNo.HasValue ? "data wk " + f.WeekNo : "no data")</div></td>
+                    <td data-label="Birds" class="text-end">@f.TotalBirdCount.ToString("N0")</td>
+                    <td data-label="Body Wt (g)" class="text-end">@Cell(Html, f.BodyWeight, f.StdBodyWeight, f.BodyWeightStatus, 0, null)</td>
+                    <td data-label="Gain (g)" class="text-end">@Cell(Html, f.WeightGain, f.StdWeightGain, f.WeightGainStatus, 0, null)</td>
+                    <td data-label="Feed g/b/d" class="text-end">@Cell(Html, f.FeedIntake, f.StdFeedIntake, f.FeedIntakeStatus, 1, null)</td>
+                    <td data-label="Uniformity" class="text-end">@Cell(Html, f.Uniformity, f.StdUniformity, f.UniformityStatus, 1, "%")</td>
+                    <td data-label="Mortality" class="text-end">@Cell(Html, f.Mortality, f.StdMortality, f.MortalityStatus, 2, "%")</td>
+                    <td data-label="Nutrition" class="text-end">
+                        @if (f.NutritionChecked == 0) { <span class="text-muted">-</span> }
+                        else if (f.NutritionOut == 0) { @Html.StatusValue("WITHIN", "All OK") }
+                        else { @Html.StatusValue("ABOVE", f.NutritionOut + " of " + f.NutritionChecked + " out") }
+                    </td>
+                    <td data-label="Score" class="text-end fw-semibold">@Html.Num(f.PerformanceScore, 0)</td>
+                    <td data-label="Status">@Html.StatusBadge(f.OverallStatusCode, f.BandName)</td>
+                    <td data-label="Alerts" class="text-end">@if (f.OpenAlerts > 0) { <a class="badge text-bg-danger text-decoration-none" href="@Url.Action("Index", "Alert", new { flockId = f.FlockID })">@f.OpenAlerts</a> } else { <span class="text-muted">0</span> }</td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="13" class="text-center text-muted py-4">No active flocks match the filters.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

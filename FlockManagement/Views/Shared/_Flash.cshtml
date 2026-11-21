@@ -1,0 +1,20 @@
+@{
+    var ok = TempData["Flash.Success"] as string;
+    var err = TempData["Flash.Error"] as string;
+}
+@if (!string.IsNullOrEmpty(ok))
+{
+    <div class="alert alert-success alert-dismissible fade show d-flex align-items-start gap-2" role="alert" data-autohide="6000">
+        <i class="bi bi-check-circle-fill"></i>
+        <div>@ok</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (!string.IsNullOrEmpty(err))
+{
+    <div class="alert alert-danger alert-dismissible fade show d-flex align-items-start gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>@err</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}

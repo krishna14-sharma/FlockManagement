@@ -1,0 +1,5 @@
+@* Save / cancel bar for edit forms. ViewData: CancelUrl *@
+<div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-3 pt-3 border-top">
+    <a class="btn btn-outline-secondary" href="@(ViewData["CancelUrl"] as string ?? Url.Action("Index"))"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save</button>
+</div>

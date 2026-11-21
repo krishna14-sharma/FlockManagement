@@ -1,0 +1,38 @@
+@model MovementListViewModel<PlacementRecord>
+@{
+    ViewBag.Title = "Placements";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Flock Placements" }, { "Icon", "bi-box-arrow-in-down" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create", new { flockId = Model.Picker.FlockID }) }, { "CreateText", "Add Placement" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_FlockPicker", Model.Picker)
+@Html.Partial("_MovementDates", Model.Picker, new ViewDataDictionary { { "FromDate", Model.FromDate }, { "ToDate", Model.ToDate } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr><th>Date</th><th>Flock</th><th>House</th><th class="text-end">Female</th><th class="text-end">Male</th><th class="text-end">Chick Wt (g)</th><th>Source</th><th>Type</th><th>Entered By</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Date" class="text-nowrap">@p.PlacementDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Flock"><a href="@Url.Action("Details", "Flock", new { id = p.FlockID })" class="fw-semibold">@p.FlockNumber</a></td>
+                        <td data-label="House">@p.HouseName</td>
+                        <td data-label="Female" class="text-end">@p.FemaleCount.ToString("N0")</td>
+                        <td data-label="Male" class="text-end">@p.MaleCount.ToString("N0")</td>
+                        <td data-label="Chick Wt (g)" class="text-end">@Html.Num(p.ChickAvgWeight, 1)</td>
+                        <td data-label="Source">@p.Source</td>
+                        <td data-label="Type">@(p.IsInitial ? Html.Raw("<span class=\"badge text-bg-primary\">Initial</span>") : Html.Raw("<span class=\"badge text-bg-secondary\">Additional</span>"))</td>
+                        <td data-label="Entered By" class="small text-muted">@p.CreatedByName<br />@p.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-center text-muted py-4">No placements found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

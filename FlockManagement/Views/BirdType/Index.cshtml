@@ -1,0 +1,45 @@
+@model MasterListViewModel<BirdType>
+@{
+    ViewBag.Title = "Bird Types";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Bird Types" }, { "Icon", "bi-tags" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Bird Type" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_MasterFilter", new ViewDataDictionary { { "Search", Model.Search }, { "Status", Model.Status } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Bird Type</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Code"><span class="fw-semibold">@b.BirdTypeCode</span></td>
+                        <td data-label="Bird Type">@b.BirdTypeName</td>
+                        <td data-label="Description">@b.Description</td>
+                        <td data-label="Status">@Html.ActiveBadge(b.IsActive)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = b.BirdTypeID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @Html.Partial("_ToggleActive", new ViewDataDictionary { { "Id", b.BirdTypeID }, { "IsActive", b.IsActive }, { "Controller", "BirdType" } })
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">No bird types found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

@@ -1,0 +1,14 @@
+@model FlockPickerModel
+@* Date range filter for movement registers; keeps the picker's selection. *@
+@{
+    var from = ViewData["FromDate"] as DateTime?;
+    var to = ViewData["ToDate"] as DateTime?;
+}
+<form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-3">
+    <input type="hidden" name="farmId" value="@Model.FarmID" />
+    <input type="hidden" name="houseId" value="@Model.HouseID" />
+    <input type="hidden" name="flockId" value="@Model.FlockID" />
+    <div><label class="form-label small text-muted mb-1">From</label><input type="date" class="form-control form-control-sm" name="fromDate" value="@(from.HasValue ? from.Value.ToString("yyyy-MM-dd") : "")" /></div>
+    <div><label class="form-label small text-muted mb-1">To</label><input type="date" class="form-control form-control-sm" name="toDate" value="@(to.HasValue ? to.Value.ToString("yyyy-MM-dd") : "")" /></div>
+    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar-range me-1"></i>Filter dates</button>
+</form>

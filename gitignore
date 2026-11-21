@@ -1,0 +1,46 @@
+# Visual Studio / ASP.NET MVC (.NET Framework 4.8)
+
+# Visual Studio cache and user settings
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+*.pdb
+
+# NuGet packages (restored automatically on build)
+packages/
+!packages/build/
+*.nupkg
+
+# Publish output
+PublishProfiles/*.pubxml.user
+[Pp]ublish/
+*.publishproj
+
+# IIS Express
+.vs/config/applicationhost.config
+
+# Uploads, logs and temporary files created by the app
+FlockManagement/App_Data/*.log
+FlockManagement/App_Data/Logs/
+*.tmp
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local secrets: keep real passwords out of Git
+Web.Release.Local.config
+*.secrets.config

@@ -1,0 +1,133 @@
+@model AlertListViewModel
+@{
+    ViewBag.Title = "Alert Center";
+    var types = new[] { "BODYWEIGHT", "WEIGHTGAIN", "FEED", "NUTRITION", "MORTALITY", "UNIFORMITY", "PRODUCTION", "FERTILITY", "HATCH", "ENVIRONMENT", "SCORE" };
+    var typeNames = new Dictionary<string, string> { { "BODYWEIGHT", "Body weight" }, { "WEIGHTGAIN", "Weight gain" }, { "FEED", "Feed intake" }, { "NUTRITION", "Nutrition" }, { "MORTALITY", "Mortality" }, { "UNIFORMITY", "Uniformity" }, { "PRODUCTION", "Egg production / egg weight" }, { "FERTILITY", "Fertility" }, { "HATCH", "Hatchability" }, { "ENVIRONMENT", "Lighting / temperature" }, { "SCORE", "Performance score" } };
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Alert Center" }, { "Icon", "bi-bell" }, { "ExportTarget", "#grid" } })
+
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select class="form-select" name="status">
+                @foreach (var s in new[] { "Open", "Acknowledged", "Closed", "All" }) { <option @(Model.Status == s ? "selected" : null)>@s</option> }
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Severity</label>
+            <select class="form-select" name="severity">
+                <option value="">All</option>
+                <option value="CRITICAL" @(Model.Severity == "CRITICAL" ? "selected" : null)>Critical</option>
+                <option value="WARNING" @(Model.Severity == "WARNING" ? "selected" : null)>Warning</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Type</label>
+            <select class="form-select" name="alertType">
+                <option value="">All</option>
+                @foreach (var t in types) { <option value="@t" @(Model.AlertType == t ? "selected" : null)>@typeNames[t]</option> }
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Farm</label>
+            @Html.DropDownList("farmId", Model.Farms, new { @class = "form-select", id = "aFarm", data_cascade_target = "#aFlock", data_cascade_url = Url.Action("Flocks", "Lookup"), data_cascade_empty = "All flocks", data_cascade_always = "true" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Flock</label>
+            @Html.DropDownList("flockId", Model.Flocks, new { @class = "form-select", id = "aFlock" })
+        </div>
+        <div class="col-6 col-md-2 d-grid"><button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button></div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">From</label>
+            <input type="date" class="form-control" name="fromDate" value="@(Model.FromDate.HasValue ? Model.FromDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">To</label>
+            <input type="date" class="form-control" name="toDate" value="@(Model.ToDate.HasValue ? Model.ToDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr><th>Date</th><th>Severity</th><th>Flock</th><th class="text-end">Week</th><th>Alert</th><th class="text-end">Standard</th><th class="text-end">Actual</th><th class="text-end">Deviation</th><th>Status</th><th class="text-end no-export">Action</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Date" class="text-nowrap">@a.AlertDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Severity">@Html.StatusBadge(a.Severity == "CRITICAL" ? "CRITICAL" : "WARNING")</td>
+                        <td data-label="Flock"><span class="fw-semibold">@a.FlockNumber</span><div class="small text-muted">@a.FarmName / @a.HouseName</div></td>
+                        <td data-label="Week" class="text-end">@a.WeekNo</td>
+                        <td data-label="Alert">
+                            <div class="fw-semibold">@a.Message</div>
+                            <div class="small text-muted">@(typeNames.ContainsKey(a.AlertType ?? "") ? typeNames[a.AlertType] : a.AlertType)@(a.ParameterName != null ? " · " + a.ParameterName : "")</div>
+                            @if (!string.IsNullOrEmpty(a.ActionTaken)) { <div class="small mt-1"><i class="bi bi-chat-left-text me-1"></i>@a.ActionTaken <span class="text-muted">&ndash; @a.AcknowledgedByName, @(a.AcknowledgedDate.HasValue ? a.AcknowledgedDate.Value.ToString("dd-MMM HH:mm") : "")</span></div> }
+                        </td>
+                        <td data-label="Standard" class="text-end">@Html.Num(a.StandardValue, a.DecimalPlaces) <span class="small text-muted">@a.UnitCode</span></td>
+                        <td data-label="Actual" class="text-end fw-semibold">@Html.Num(a.ActualValue, a.DecimalPlaces)</td>
+                        <td data-label="Deviation" class="text-end">@Html.Pct(a.DeviationPct, 1)</td>
+                        <td data-label="Status"><span class="badge @(a.Status == "Open" ? "text-bg-danger" : a.Status == "Acknowledged" ? "text-bg-warning" : "text-bg-secondary")">@a.Status</span></td>
+                        <td class="text-end text-nowrap no-export">
+                            @if (a.FlockWeeklyID.HasValue) { <a class="btn btn-sm btn-outline-secondary" title="Open analysis" href="@Url.Action("Weekly", "Analysis", new { id = a.FlockWeeklyID })"><i class="bi bi-graph-up"></i></a> }
+                            @if (Model.CanAcknowledge && a.Status != "Closed")
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary js-ack" title="Acknowledge / close"
+                                        data-id="@a.AlertID" data-msg="@a.FlockNumber wk @a.WeekNo: @a.Message" data-action="@a.ActionTaken"><i class="bi bi-check2-square"></i></button>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="10" class="text-center text-muted py-4">No alerts match the filters.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)
+
+@if (Model.CanAcknowledge)
+{
+    <div class="modal fade" id="ackModal" tabindex="-1">
+        <div class="modal-dialog">
+            @using (Html.BeginForm("Acknowledge", "Alert", FormMethod.Post, new { @class = "modal-content" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="alertId" id="ackId" />
+                <input type="hidden" name="returnUrl" value="@Request.RawUrl" />
+                <div class="modal-header"><h5 class="modal-title">Acknowledge alert</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p class="small fw-semibold" id="ackMsg"></p>
+                    <label class="form-label required" for="actionTaken">Action taken</label>
+                    <textarea class="form-control" name="actionTaken" id="actionTaken" rows="3" maxlength="500" required placeholder="e.g. Feed allowance increased by 3 g/bird/day from Monday"></textarea>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="close" value="true" id="ackClose" />
+                        <label class="form-check-label" for="ackClose">Close the alert (problem resolved)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@section scripts {
+<script>
+    $(document).on('click', '.js-ack', function () {
+        $('#ackId').val($(this).data('id'));
+        $('#ackMsg').text($(this).data('msg'));
+        $('#actionTaken').val($(this).data('action') || '');
+        $('#ackClose').prop('checked', false);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('ackModal')).show();
+    });
+</script>
+}

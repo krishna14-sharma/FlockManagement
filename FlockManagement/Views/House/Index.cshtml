@@ -1,0 +1,59 @@
+@model MasterListViewModel<House>
+@{
+    ViewBag.Title = "Houses / Sheds";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Houses / Sheds" }, { "Icon", "bi-house-door" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add House" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_MasterFilter", new ViewDataDictionary { { "Search", Model.Search }, { "Status", Model.Status }, { "ParentOptions", Model.ParentOptions }, { "ParentLabel", "Farm" } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Farm</th>
+                    <th>Code</th>
+                    <th>House / Shed</th>
+                    <th>Type</th>
+                    <th class="text-end">Capacity</th>
+                    <th class="text-end">Current Birds</th>
+                    <th style="min-width:140px">Utilisation</th>
+                    <th>Status</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var h in Model.Result.Items)
+                {
+                    var pct = h.Capacity > 0 ? Math.Min(100m, Math.Round(h.CurrentBirds * 100m / h.Capacity, 1)) : 0m;
+                    var bar = pct > 95 ? "bg-danger" : pct > 80 ? "bg-warning" : "bg-success";
+                    <tr>
+                        <td data-label="Farm">@h.FarmName</td>
+                        <td data-label="Code"><span class="fw-semibold">@h.HouseCode</span></td>
+                        <td data-label="House / Shed">@h.HouseName</td>
+                        <td data-label="Type">@h.HouseType</td>
+                        <td data-label="Capacity" class="text-end">@h.Capacity.ToString("N0")</td>
+                        <td data-label="Current Birds" class="text-end">@h.CurrentBirds.ToString("N0")</td>
+                        <td data-label="Utilisation">
+                            <div class="progress" role="progressbar" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100" style="height: 1.1rem">
+                                <div class="progress-bar @bar" style="width:@(pct.ToString(System.Globalization.CultureInfo.InvariantCulture))%">@pct%</div>
+                            </div>
+                        </td>
+                        <td data-label="Status">@Html.ActiveBadge(h.IsActive)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = h.HouseID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @Html.Partial("_ToggleActive", new ViewDataDictionary { { "Id", h.HouseID }, { "IsActive", h.IsActive }, { "Controller", "House" } })
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-center text-muted py-4">No houses found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

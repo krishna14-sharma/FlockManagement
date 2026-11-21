@@ -1,0 +1,116 @@
+@model HatchResultEditViewModel
+@{
+    ViewBag.Title = Model.HatchResultID == 0 ? "Add Hatch Result" : "Edit Hatch Result";
+}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-9 col-xl-8">
+        <h1 class="h4 mb-3"><i class="bi bi-egg text-brand me-2"></i>@ViewBag.Title</h1>
+        @using (Html.BeginForm("Save", "HatchResult", FormMethod.Post, new { @class = "card shadow-sm", novalidate = "novalidate" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.HatchResultID)
+            <div class="card-body">
+                @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+                <h2 class="h6 text-muted">Eggs set</h2>
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        @Html.LabelFor(m => m.FlockID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.FlockID, Model.Flocks, new { @class = "form-select", id = "hFlock" })
+                        @Html.ValidationMessageFor(m => m.FlockID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.WeekNo, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.WeekNo, Model.Weeks, "-- Select week --", new { @class = "form-select", id = "hWeek" })
+                        @Html.ValidationMessageFor(m => m.WeekNo, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-3">
+                        @Html.LabelFor(m => m.SetDate, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.SetDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        @Html.ValidationMessageFor(m => m.SetDate, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.SettableEggs, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.SettableEggs, new { @class = "form-control text-end js-h", type = "number", min = 1 })
+                        @Html.ValidationMessageFor(m => m.SettableEggs, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.InfertileEggs, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.InfertileEggs, new { @class = "form-control text-end js-h", type = "number", min = 0 })
+                        @Html.ValidationMessageFor(m => m.InfertileEggs, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-12 col-md-6 d-flex align-items-end">
+                        <div class="small"><span class="text-muted">Fertile eggs</span> <strong id="hFertile">-</strong> &middot; <span class="text-muted">Fertility</span> <strong id="hFertPct">-</strong></div>
+                    </div>
+                </div>
+
+                <h2 class="h6 text-muted mt-4">Hatch <small class="fw-normal">(leave blank while the eggs are in incubation)</small></h2>
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.HatchDate, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.HatchDate, "{0:yyyy-MM-dd}", new { @class = "form-control js-h", type = "date" })
+                        @Html.ValidationMessageFor(m => m.HatchDate, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.HatchedChicks, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.HatchedChicks, new { @class = "form-control text-end js-h", type = "number", min = 0 })
+                        @Html.ValidationMessageFor(m => m.HatchedChicks, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.DeadInShell, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.DeadInShell, new { @class = "form-control text-end js-h", type = "number", min = 0 })
+                    </div>
+                    <div class="col-6 col-md-3">
+                        @Html.LabelFor(m => m.SaleableChicks, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.SaleableChicks, new { @class = "form-control text-end js-h", type = "number", min = 0 })
+                        @Html.ValidationMessageFor(m => m.SaleableChicks, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-12">
+                        <div class="small"><span class="text-muted">Hatchability (chicks &divide; eggs set)</span> <strong id="hHatchPct">-</strong> &middot; <span class="text-muted">Hatch of fertile</span> <strong id="hHofPct">-</strong></div>
+                    </div>
+                    <div class="col-12">
+                        @Html.LabelFor(m => m.Remarks, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Remarks, new { @class = "form-control", maxlength = 250 })
+                    </div>
+                </div>
+                <div id="hError" class="alert alert-danger small mt-3 d-none"></div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a class="btn btn-outline-secondary" href="@Url.Action("Index", new { flockId = Model.FlockID == 0 ? (int?)null : Model.FlockID })">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+@section scripts {
+<script>
+    $(function () {
+        function n(id) { return fwm.parseNum($('#' + id).val()); }
+        function calc() {
+            var set = n('SettableEggs'), inf = n('InfertileEggs') || 0, ch = n('HatchedChicks') || 0, dis = n('DeadInShell') || 0;
+            var hatched = !!$('#HatchDate').val(), errs = [];
+            if (set > 0) {
+                $('#hFertile').text(fwm.num(set - inf));
+                $('#hFertPct').text(fwm.num((set - inf) * 100 / set, 2) + '%');
+                $('#hHatchPct').text(hatched ? fwm.num(ch * 100 / set, 2) + '%' : 'after hatch');
+                $('#hHofPct').text(hatched && set - inf > 0 ? fwm.num(ch * 100 / (set - inf), 2) + '%' : '-');
+                if (inf > set) errs.push('Infertile eggs cannot exceed the eggs set.');
+                if (ch + dis > set - inf) errs.push('Chicks hatched plus dead-in-shell cannot exceed the fertile eggs.');
+            } else {
+                $('#hFertile, #hFertPct, #hHatchPct, #hHofPct').text('-');
+            }
+            if (!hatched && ch > 0) errs.push('Enter the hatch date together with the chicks hatched.');
+            $('#hError').toggleClass('d-none', errs.length === 0).html(errs.join('<br>'));
+        }
+        $(document).on('input change', '.js-h', calc);
+        calc();
+        // reload the egg weeks when the flock changes
+        $('#hFlock').on('change', function () {
+            var $w = $('#hWeek').empty().append($('<option>', { value: '', text: '-- Select week --' }));
+            if (!this.value) return;
+            $.getJSON('@Url.Action("Weeks")', { flockId: this.value }).done(function (items) {
+                items.forEach(function (i) { $w.append($('<option>', { value: i.id, text: i.text })); });
+            }).fail(window.fwmAjaxError);
+        });
+    });
+</script>
+}

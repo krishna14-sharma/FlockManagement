@@ -1,0 +1,103 @@
+@model StandardListViewModel
+@{
+    ViewBag.Title = "Standards";
+    var c = Model.Criteria;
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Age / Week Standards" }, { "Icon", "bi-rulers" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Grid") }, { "CreateText", "Edit Standards Grid" }, { "ExportTarget", "#grid" } })
+
+<div class="alert alert-light border small d-flex gap-2">
+    <i class="bi bi-info-circle text-brand"></i>
+    <div>Standards are looked up automatically for each flock and week: a breed-specific row beats an all-breeds row, a feed-specific row beats an any-feed row, and the latest <em>Effective From</em> on or before the entry date wins. Status: within Min-Max = Within Standard; outside = Below/Above; beyond the critical limit or tolerance = Critical.</div>
+</div>
+
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Bird Type</label>
+            @Html.DropDownList("birdTypeId", Model.BirdTypes, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Breed</label>
+            @Html.DropDownList("breedId", Model.Breeds, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Group</label>
+            @Html.DropDownList("group", Model.Groups, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Parameter</label>
+            @Html.DropDownList("parameterId", Model.Parameters, new { @class = "form-select" })
+        </div>
+        <div class="col-3 col-md-1">
+            <label class="form-label small text-muted mb-1">From wk</label>
+            <input type="number" class="form-control" name="fromWeek" value="@c.FromWeek" min="0" max="120" />
+        </div>
+        <div class="col-3 col-md-1">
+            <label class="form-label small text-muted mb-1">To wk</label>
+            <input type="number" class="form-control" name="toWeek" value="@c.ToWeek" min="0" max="120" />
+        </div>
+        <div class="col-6 col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-sm table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Bird Type</th>
+                    <th>Breed</th>
+                    <th>Feed</th>
+                    <th class="text-end">Week</th>
+                    <th>Parameter</th>
+                    <th class="text-end">Standard</th>
+                    <th class="text-end">Min</th>
+                    <th class="text-end">Max</th>
+                    <th class="text-end">Critical Min</th>
+                    <th class="text-end">Critical Max</th>
+                    <th>Unit</th>
+                    <th>Effective</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Result.Items)
+                {
+                    <tr class="@(s.IsActive ? "" : "text-muted")">
+                        <td data-label="Bird Type">@s.BirdTypeName</td>
+                        <td data-label="Breed">@(s.BreedName ?? "All")</td>
+                        <td data-label="Feed">@(s.FeedTypeName ?? "Any")</td>
+                        <td data-label="Week" class="text-end">@s.AgeWeek</td>
+                        <td data-label="Parameter">@s.ParameterName</td>
+                        <td data-label="Standard" class="text-end fw-semibold">@Html.Num(s.StandardValue, s.DecimalPlaces)</td>
+                        <td data-label="Min" class="text-end">@Html.Num(s.MinValue, s.DecimalPlaces)</td>
+                        <td data-label="Max" class="text-end">@Html.Num(s.MaxValue, s.DecimalPlaces)</td>
+                        <td data-label="Critical Min" class="text-end">@Html.Num(s.CriticalMinValue, s.DecimalPlaces)</td>
+                        <td data-label="Critical Max" class="text-end">@Html.Num(s.CriticalMaxValue, s.DecimalPlaces)</td>
+                        <td data-label="Unit">@s.UnitCode</td>
+                        <td data-label="Effective" class="text-nowrap">@s.EffectiveFrom.ToString("dd-MMM-yyyy")@(s.EffectiveTo.HasValue ? " to " + s.EffectiveTo.Value.ToString("dd-MMM-yyyy") : "")</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" title="Edit this set"
+                                   href="@Url.Action("Grid", new { birdTypeId = s.BirdTypeID, breedId = s.BreedID, feedTypeId = s.FeedTypeID, parameterId = s.ParameterID, effectiveFrom = s.EffectiveFrom.ToString("yyyy-MM-dd") })"><i class="bi bi-grid-3x3"></i></a>
+                                @using (Html.BeginForm("ToggleActive", "Standard", new { id = s.StandardID, active = !s.IsActive, returnUrl = Request.RawUrl }, FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm @(s.IsActive ? "btn-outline-danger" : "btn-outline-success")" data-confirm="@(s.IsActive ? "Deactivate this standard row?" : "Activate this standard row?")"><i class="bi @(s.IsActive ? "bi-slash-circle" : "bi-check-circle")"></i></button>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="13" class="text-center text-muted py-4">No standards match the filters.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

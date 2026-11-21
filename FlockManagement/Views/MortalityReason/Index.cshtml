@@ -1,0 +1,39 @@
+@model MasterListViewModel<MortalityReason>
+@{
+    ViewBag.Title = "Mortality Reasons";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Mortality Reasons" }, { "Icon", "bi-clipboard-x" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Reason" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_MasterFilter", new ViewDataDictionary { { "Search", Model.Search }, { "Status", Model.Status } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr><th>Code</th><th>Reason</th><th>Category</th><th>Status</th>@if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }</tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Code"><span class="fw-semibold">@r.ReasonCode</span></td>
+                        <td data-label="Reason">@r.ReasonName</td>
+                        <td data-label="Category">@r.Category</td>
+                        <td data-label="Status">@Html.ActiveBadge(r.IsActive)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = r.MortalityReasonID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @Html.Partial("_ToggleActive", new ViewDataDictionary { { "Id", r.MortalityReasonID }, { "IsActive", r.IsActive }, { "Controller", "MortalityReason" } })
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">No mortality reasons found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

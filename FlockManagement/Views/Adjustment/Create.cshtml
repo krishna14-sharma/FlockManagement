@@ -1,0 +1,48 @@
+@model AdjustmentCreateViewModel
+@{
+    ViewBag.Title = "New Adjustment";
+}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-7">
+        <h1 class="h4 mb-3"><i class="bi bi-plus-slash-minus text-brand me-2"></i>New Population Adjustment</h1>
+        <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i>Use adjustments only to correct a physical count (for example after a stock-take). Enter a negative number to reduce birds. The reason and your name are kept in the audit log.</div>
+        @using (Html.BeginForm("Create", "Adjustment", FormMethod.Post, new { @class = "card shadow-sm", novalidate = "novalidate" }))
+        {
+            @Html.AntiForgeryToken()
+            <div class="card-body">
+                @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        @Html.LabelFor(m => m.FlockID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.FlockID, Model.Flocks, new { @class = "form-select" })
+                        @Html.ValidationMessageFor(m => m.FlockID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-5">
+                        @Html.LabelFor(m => m.AdjustmentDate, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.AdjustmentDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        @Html.ValidationMessageFor(m => m.AdjustmentDate, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6">
+                        @Html.LabelFor(m => m.FemaleAdjustment, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.FemaleAdjustment, new { @class = "form-control text-end", type = "number" })
+                        @Html.ValidationMessageFor(m => m.FemaleAdjustment, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6">
+                        @Html.LabelFor(m => m.MaleAdjustment, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.MaleAdjustment, new { @class = "form-control text-end", type = "number" })
+                        @Html.ValidationMessageFor(m => m.MaleAdjustment, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-12">
+                        @Html.LabelFor(m => m.Reason, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.Reason, new { @class = "form-control", maxlength = 250 })
+                        @Html.ValidationMessageFor(m => m.Reason, "", new { @class = "text-danger small" })
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Cancel</a>
+                    <button type="submit" class="btn btn-primary" data-confirm="Save this adjustment? The population will be recalculated."><i class="bi bi-save me-1"></i>Save</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>

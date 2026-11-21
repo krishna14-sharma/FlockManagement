@@ -1,0 +1,56 @@
+@model WeeklyRegisterViewModel
+@{
+    ViewBag.Title = "Weekly Register";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Weekly Register" }, { "Icon", "bi-journal-text" }, { "CanEdit", Model.CanEnter }, { "CreateUrl", Url.Action("Entry", new { flockId = Model.Picker.FlockID }) }, { "CreateText", "Weekly Entry" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_FlockPicker", Model.Picker)
+@Html.Partial("_MovementDates", Model.Picker, new ViewDataDictionary { { "FromDate", Model.FromDate }, { "ToDate", Model.ToDate } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-sm table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Flock</th><th>Farm / House</th><th class="text-end">Week</th><th>Date</th>
+                    <th class="text-end">Opening</th><th class="text-end">Mortality</th><th class="text-end">Closing</th>
+                    <th class="text-end">Body Wt (g)</th><th class="text-end">Std (g)</th><th class="text-end">Feed g/b/d</th>
+                    <th class="text-end">Unif. %</th><th class="text-end">Mort. %</th><th class="text-end">Score</th><th>Status</th>
+                    <th class="text-end no-export">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Flock"><a class="fw-semibold" href="@Url.Action("Details", "Flock", new { id = w.FlockID })">@w.FlockNumber</a></td>
+                        <td data-label="Farm / House" class="small">@w.FarmName<br /><span class="text-muted">@w.HouseName</span></td>
+                        <td data-label="Week" class="text-end fw-semibold">@w.WeekNo</td>
+                        <td data-label="Date" class="text-nowrap">@w.EntryDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Opening" class="text-end">@w.OpeningPopulation.ToString("N0")</td>
+                        <td data-label="Mortality" class="text-end">@w.TotalMortality.ToString("N0")</td>
+                        <td data-label="Closing" class="text-end">@w.ClosingPopulation.ToString("N0")</td>
+                        <td data-label="Body Wt (g)" class="text-end fw-semibold">@Html.Num(w.ActualBodyWeight, 0)</td>
+                        <td data-label="Std (g)" class="text-end text-muted">@Html.Num(w.StandardBodyWeight, 0)</td>
+                        <td data-label="Feed g/b/d" class="text-end">@Html.Num(w.ActualFeedIntake, 1)</td>
+                        <td data-label="Unif. %" class="text-end">@Html.Num(w.UniformityPercentage, 1)</td>
+                        <td data-label="Mort. %" class="text-end">@Html.Num(w.MortalityPercentage, 2)</td>
+                        <td data-label="Score" class="text-end fw-semibold">@Html.Num(w.PerformanceScore, 0)</td>
+                        <td data-label="Status">@Html.StatusBadge(w.OverallStatusCode)</td>
+                        <td class="text-end text-nowrap no-export">
+                            <a class="btn btn-sm btn-outline-secondary" title="Analysis" href="@Url.Action("Weekly", "Analysis", new { id = w.FlockWeeklyID })"><i class="bi bi-graph-up"></i></a>
+                            @if (Model.CanEnter)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" title="Edit" href="@Url.Action("Entry", new { flockId = w.FlockID, weekNo = w.WeekNo })"><i class="bi bi-pencil"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="15" class="text-center text-muted py-4">No weekly entries found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

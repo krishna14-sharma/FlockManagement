@@ -1,0 +1,51 @@
+@model MasterListViewModel<Farm>
+@{
+    ViewBag.Title = "Farms";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Farms / Locations" }, { "Icon", "bi-geo-alt" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Farm" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_MasterFilter", new ViewDataDictionary { { "Search", Model.Search }, { "Status", Model.Status } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Farm Name</th>
+                    <th>Location</th>
+                    <th>Contact</th>
+                    <th class="text-end">Houses</th>
+                    <th class="text-end">Active Flocks</th>
+                    <th>Status</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Code"><span class="fw-semibold">@f.FarmCode</span></td>
+                        <td data-label="Farm Name">@f.FarmName</td>
+                        <td data-label="Location">@f.Location</td>
+                        <td data-label="Contact">@f.ContactPerson<br /><small class="text-muted">@f.ContactNumber</small></td>
+                        <td data-label="Houses" class="text-end">@f.HouseCount</td>
+                        <td data-label="Active Flocks" class="text-end">@f.ActiveFlockCount</td>
+                        <td data-label="Status">@Html.ActiveBadge(f.IsActive)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = f.FarmID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @Html.Partial("_ToggleActive", new ViewDataDictionary { { "Id", f.FarmID }, { "IsActive", f.IsActive }, { "Controller", "Farm" } })
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">No farms found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

@@ -1,0 +1,41 @@
+@model MovementListViewModel<TransferRecord>
+@{
+    ViewBag.Title = "Transfers";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Bird Transfers" }, { "Icon", "bi-arrow-left-right" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create", new { flockId = Model.Picker.FlockID }) }, { "CreateText", "New Transfer" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_FlockPicker", Model.Picker)
+@Html.Partial("_MovementDates", Model.Picker, new ViewDataDictionary { { "FromDate", Model.FromDate }, { "ToDate", Model.ToDate } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr><th>Date</th><th class="text-end">Week</th><th>Flock</th><th>Type</th><th>From House</th><th>To House</th><th>Other Flock</th><th class="text-end">Female</th><th class="text-end">Male</th><th>Reason</th><th>Entered By</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model.Result.Items)
+                {
+                    var badge = t.TransferType == "IN" ? "text-bg-success" : t.TransferType == "OUT" ? "text-bg-danger" : "text-bg-info";
+                    <tr>
+                        <td data-label="Date" class="text-nowrap">@t.TransferDate.ToString("dd-MMM-yyyy")</td>
+                        <td data-label="Week" class="text-end">@t.WeekNo</td>
+                        <td data-label="Flock"><a href="@Url.Action("Details", "Flock", new { id = t.FlockID })" class="fw-semibold">@t.FlockNumber</a></td>
+                        <td data-label="Type"><span class="badge @badge">@t.TransferType</span></td>
+                        <td data-label="From House">@t.FromHouseName</td>
+                        <td data-label="To House">@t.ToHouseName</td>
+                        <td data-label="Other Flock">@t.CounterFlockNumber</td>
+                        <td data-label="Female" class="text-end">@t.FemaleCount.ToString("N0")</td>
+                        <td data-label="Male" class="text-end">@t.MaleCount.ToString("N0")</td>
+                        <td data-label="Reason">@t.Reason</td>
+                        <td data-label="Entered By" class="small text-muted">@t.CreatedByName<br />@t.CreatedDate.ToString("dd-MMM-yyyy HH:mm")</td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="11" class="text-center text-muted py-4">No transfers found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

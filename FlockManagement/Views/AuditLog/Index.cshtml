@@ -1,0 +1,112 @@
+@model AuditListViewModel
+@{
+    ViewBag.Title = "Audit Trail";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Audit Trail" }, { "Icon", "bi-clock-history" }, { "ExportTarget", "#grid" } })
+
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1" for="fromDate">From</label>
+            <input type="date" class="form-control" id="fromDate" name="fromDate" value="@(Model.FromDate.HasValue ? Model.FromDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1" for="toDate">To</label>
+            <input type="date" class="form-control" id="toDate" name="toDate" value="@(Model.ToDate.HasValue ? Model.ToDate.Value.ToString("yyyy-MM-dd") : "")" />
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1" for="tableName">Table</label>
+            @Html.DropDownList("tableName", Model.Tables, new { @class = "form-select", id = "tableName" })
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1" for="userName">User</label>
+            <input type="search" class="form-control" id="userName" name="userName" value="@Model.UserName" maxlength="50" />
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-sm table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Date / Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Table</th>
+                    <th>Record</th>
+                    <th>IP Address</th>
+                    <th class="no-export">Changes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Date / Time" class="text-nowrap">@a.ActionDate.ToString("dd-MMM-yyyy HH:mm:ss")</td>
+                        <td data-label="User">@(a.UserName ?? "-")</td>
+                        <td data-label="Action"><span class="badge text-bg-light border">@a.ActionType</span></td>
+                        <td data-label="Table">@a.TableName</td>
+                        <td data-label="Record">@a.RecordID</td>
+                        <td data-label="IP Address">@a.IPAddress</td>
+                        <td class="no-export">
+                            @if (!string.IsNullOrEmpty(a.OldValue) || !string.IsNullOrEmpty(a.NewValue))
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#auditModal"
+                                        data-audit-old="@a.OldValue" data-audit-new="@a.NewValue" data-audit-title="@a.TableName #@a.RecordID - @a.ActionType">
+                                    <i class="bi bi-file-diff"></i>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-4">No audit entries for the selected filters.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)
+
+<div class="modal fade" id="auditModal" tabindex="-1" aria-labelledby="auditModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="auditModalTitle">Changes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light"><tr><th>Field</th><th>Old Value</th><th>New Value</th></tr></thead>
+                        <tbody id="auditDiff"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+<script>
+    $('#auditModal').on('show.bs.modal', function (e) {
+        var $b = $(e.relatedTarget);
+        function parse(v) { try { var o = v ? JSON.parse(v) : {}; return Array.isArray(o) ? { Values: o.map(function (x) { return typeof x === 'object' ? Object.values(x).join('') : x; }).join(', ') } : o; } catch (ex) { return { Value: v }; } }
+        var oldV = parse($b.attr('data-audit-old')), newV = parse($b.attr('data-audit-new'));
+        var keys = Object.keys(Object.assign({}, oldV, newV));
+        var $body = $('#auditDiff').empty();
+        $('#auditModalTitle').text($b.attr('data-audit-title'));
+        keys.forEach(function (k) {
+            var o = oldV[k] === undefined ? '' : String(oldV[k]), n = newV[k] === undefined ? '' : String(newV[k]);
+            var $tr = $('<tr/>').toggleClass('table-warning', o !== n);
+            $tr.append($('<td/>').addClass('fw-semibold').text(k)).append($('<td/>').text(o)).append($('<td/>').text(n));
+            $body.append($tr);
+        });
+    });
+</script>
+}

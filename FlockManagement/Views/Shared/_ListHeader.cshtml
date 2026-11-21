@@ -1,0 +1,24 @@
+@* Page header for list screens. ViewData: Title, Icon, CanEdit, CreateUrl, CreateText, ExportTarget *@
+@{
+    var title = ViewData["Title"] as string;
+    var icon = (ViewData["Icon"] as string) ?? "bi-list";
+    var canEdit = ViewData["CanEdit"] is bool && (bool)ViewData["CanEdit"];
+    var createUrl = ViewData["CreateUrl"] as string;
+    var createText = (ViewData["CreateText"] as string) ?? "Add New";
+    var exportTarget = ViewData["ExportTarget"] as string;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0 d-flex align-items-center gap-2"><i class="bi @icon text-brand"></i>@title</h1>
+    <div class="d-flex gap-2">
+        @if (!string.IsNullOrEmpty(exportTarget))
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-export-csv="@exportTarget" data-export-name="@title">
+                <i class="bi bi-filetype-csv me-1"></i>Export CSV
+            </button>
+        }
+        @if (canEdit && !string.IsNullOrEmpty(createUrl))
+        {
+            <a class="btn btn-primary btn-sm" href="@createUrl"><i class="bi bi-plus-lg me-1"></i>@createText</a>
+        }
+    </div>
+</div>

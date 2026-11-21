@@ -1,0 +1,32 @@
+@model FeedFormula
+@{
+    ViewBag.Title = "Feed Formula " + Model.FormulaCode;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-1"><i class="bi bi-eyedropper text-brand me-2"></i>@Model.FormulaCode @Html.ActiveBadge(Model.IsActive)</h1>
+        <div class="text-muted small">@Model.FormulaName &middot; @Model.FeedTypeName &middot; effective @Model.EffectiveFrom.ToString("dd-MMM-yyyy")@(Model.EffectiveTo.HasValue ? " to " + Model.EffectiveTo.Value.ToString("dd-MMM-yyyy") : " onwards")</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Index")"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        @if ((bool)ViewBag.CanEdit) { <a class="btn btn-primary btn-sm" href="@Url.Action("Edit", new { id = Model.FeedFormulaID })"><i class="bi bi-pencil me-1"></i>Edit</a> }
+    </div>
+</div>
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0 table-stack">
+            <thead class="table-light"><tr><th>Nutrient</th><th>Unit</th><th class="text-end">Declared Value</th></tr></thead>
+            <tbody>
+                @foreach (var d in Model.Details)
+                {
+                    <tr>
+                        <td data-label="Nutrient" class="fw-semibold">@d.ParameterName</td>
+                        <td data-label="Unit" class="text-muted">@d.UnitCode</td>
+                        <td data-label="Declared Value" class="text-end">@Html.Num(d.Value, d.DecimalPlaces)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (!string.IsNullOrEmpty(Model.Remarks)) { <div class="card-footer bg-white small text-muted">@Model.Remarks</div> }
+</div>

@@ -1,0 +1,59 @@
+@model FeedFormulaListViewModel
+@{
+    ViewBag.Title = "Feed Formulas";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Feed Formulas" }, { "Icon", "bi-eyedropper" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Formula" }, { "ExportTarget", "#grid" } })
+
+<form method="get" class="card card-body shadow-sm mb-3 filter-bar">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+            <label class="form-label small text-muted mb-1">Search</label>
+            <input type="search" class="form-control" name="search" value="@Model.Search" placeholder="Code or name" />
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small text-muted mb-1">Feed Type</label>
+            @Html.DropDownList("feedTypeId", Model.FeedTypes, new { @class = "form-select" })
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select class="form-select" name="status">
+                <option value="active" @(Model.Status == "active" ? "selected" : null)>Active</option>
+                <option value="inactive" @(Model.Status == "inactive" ? "selected" : null)>Inactive</option>
+                <option value="all" @(Model.Status == "all" ? "selected" : null)>All</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-3 d-grid"><button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button></div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr><th>Code</th><th>Name</th><th>Feed Type</th><th>Effective</th><th class="text-end">Nutrients</th><th>Status</th><th class="text-end no-export">Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Code"><a class="fw-semibold" href="@Url.Action("Details", new { id = f.FeedFormulaID })">@f.FormulaCode</a></td>
+                        <td data-label="Name">@f.FormulaName</td>
+                        <td data-label="Feed Type">@f.FeedTypeName</td>
+                        <td data-label="Effective" class="text-nowrap">@f.EffectiveFrom.ToString("dd-MMM-yyyy")@(f.EffectiveTo.HasValue ? " to " + f.EffectiveTo.Value.ToString("dd-MMM-yyyy") : " onwards")</td>
+                        <td data-label="Nutrients" class="text-end">@f.NutrientCount</td>
+                        <td data-label="Status">@Html.ActiveBadge(f.IsActive)</td>
+                        <td class="text-end text-nowrap no-export">
+                            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", new { id = f.FeedFormulaID })"><i class="bi bi-eye"></i></a>
+                            @if (Model.CanEdit) { <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = f.FeedFormulaID })"><i class="bi bi-pencil"></i></a> }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-4">No feed formulas found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

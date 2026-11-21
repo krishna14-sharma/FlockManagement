@@ -1,0 +1,58 @@
+@model MasterListViewModel<FeedType>
+@{
+    ViewBag.Title = "Feed Types";
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Feed Types" }, { "Icon", "bi-basket" }, { "CanEdit", Model.CanEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Feed Type" }, { "ExportTarget", "#grid" } })
+@Html.Partial("_MasterFilter", new ViewDataDictionary { { "Search", Model.Search }, { "Status", Model.Status } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table id="grid" class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Code</th>
+                    <th>Feed Type</th>
+                    <th>Fed To</th>
+                    <th class="text-center">Age (weeks)</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    @if (Model.CanEdit) { <th class="text-end no-export">Actions</th> }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Result.Items)
+                {
+                    <tr>
+                        <td data-label="Code"><span class="fw-semibold">@f.FeedTypeCode</span></td>
+                        <td data-label="Feed Type">@f.FeedTypeName</td>
+                        <td data-label="Fed To">@FeedTypeViewModel.SexText(f.TargetSex)</td>
+                        <td data-label="Age (weeks)" class="text-center">
+                            @if (f.ApplicableFromWeek.HasValue || f.ApplicableToWeek.HasValue)
+                            {
+                                @:@(f.ApplicableFromWeek.HasValue ? f.ApplicableFromWeek.ToString() : "0") &ndash; @(f.ApplicableToWeek.HasValue ? f.ApplicableToWeek.ToString() : "depletion")
+                            }
+                            else
+                            {
+                                <span class="text-muted">Any</span>
+                            }
+                        </td>
+                        <td data-label="Description">@f.Description</td>
+                        <td data-label="Status">@Html.ActiveBadge(f.IsActive)</td>
+                        @if (Model.CanEdit)
+                        {
+                            <td class="text-end text-nowrap no-export">
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = f.FeedTypeID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                                @Html.Partial("_ToggleActive", new ViewDataDictionary { { "Id", f.FeedTypeID }, { "IsActive", f.IsActive }, { "Controller", "FeedType" } })
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Result.Items.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-4">No feed types found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@Html.Pager(Model.Result)

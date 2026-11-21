@@ -1,0 +1,15 @@
+@* Activate / deactivate button. ViewData: Id, IsActive, Controller *@
+@{
+    var id = (int)ViewData["Id"];
+    var isActive = (bool)ViewData["IsActive"];
+    var controllerName = (string)ViewData["Controller"];
+}
+@using (Html.BeginForm("ToggleActive", controllerName, new { id = id, active = !isActive }, FormMethod.Post, new { @class = "d-inline" }))
+{
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-sm @(isActive ? "btn-outline-danger" : "btn-outline-success")"
+            data-confirm="@(isActive ? "Deactivate this record? It will no longer appear in selection lists." : "Activate this record?")"
+            title="@(isActive ? "Deactivate" : "Activate")">
+        <i class="bi @(isActive ? "bi-slash-circle" : "bi-check-circle")"></i>
+    </button>
+}

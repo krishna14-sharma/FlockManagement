@@ -1,0 +1,20 @@
+@model SidebarViewModel
+<nav class="sidebar-nav py-2" aria-label="Main menu">
+    @foreach (var group in Model.Groups)
+    {
+        <div class="sidebar-group">
+            <div class="sidebar-heading">@group.Key</div>
+            <ul class="nav flex-column">
+                @foreach (var item in group)
+                {
+                    var active = Model.ActiveItem != null && ReferenceEquals(item, Model.ActiveItem);
+                    <li class="nav-item">
+                        <a class="nav-link @(active ? "active" : "")" href="@Url.Action(item.ActionName, item.ControllerName)" @(active ? Html.Raw("aria-current=\"page\"") : null)>
+                            <i class="bi @item.IconClass"></i><span>@item.MenuText</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</nav>

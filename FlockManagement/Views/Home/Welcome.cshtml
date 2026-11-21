@@ -1,0 +1,9 @@
+@{
+    ViewBag.Title = "Welcome";
+    var app = User as AppPrincipal;
+}
+<div class="text-center py-5">
+    <i class="bi bi-egg-fried text-brand display-3"></i>
+    <h1 class="h3 mt-3">Welcome, @(app != null ? app.FullName : User.Identity.Name)</h1>
+    <p class="text-muted">Use the menu to open the screens available to your role.</p>
+</div>

@@ -1,0 +1,216 @@
+@model WeeklyAnalysisViewModel
+@{
+    ViewBag.Title = "Production Performance Analysis";
+    var a = Model.Analysis;
+    var w = a != null ? a.Week : null;
+    var prod = w != null ? w.Production : null;
+    var hatch = prod != null ? prod.HatchResults : new List<FlockManagement.Common.Entities.HatchResult>();
+}
+@functions {
+    // one standard-vs-actual row of the sheet
+    IHtmlString Row(HtmlHelper h, string sno, string label, string code, string note, string unitOverride, int rowspan)
+    {
+        var p = Model.P(code);
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<tr>");
+        if (rowspan > 0)
+            sb.Append("<td class=\"text-center text-muted\"" + (rowspan > 1 ? " rowspan=\"" + rowspan + "\"" : "") + ">" + sno + "</td>");
+        var unit = unitOverride ?? (p != null ? p.UnitCode : "");
+        sb.Append("<td data-label=\"Parameter\"><span class=\"fw-semibold\">" + label + "</span>"
+                  + (string.IsNullOrEmpty(unit) ? "" : " <span class=\"text-muted small\">(" + HttpUtility.HtmlEncode(unit) + ")</span>")
+                  + (string.IsNullOrEmpty(note) ? "" : "<div class=\"small text-muted\">" + note + "</div>") + "</td>");
+        if (p == null)
+        {
+            sb.Append("<td class=\"text-end text-muted\">-</td><td class=\"text-end text-muted\">-</td><td class=\"text-end text-muted\">-</td><td></td>");
+        }
+        else
+        {
+            var range = p.MinValue.HasValue || p.MaxValue.HasValue
+                ? "<div class=\"small text-muted\">" + h.Num(p.MinValue, p.DecimalPlaces) + " &ndash; " + h.Num(p.MaxValue, p.DecimalPlaces) + "</div>" : "";
+            sb.Append("<td data-label=\"STD\" class=\"text-end\">" + h.Num(p.StandardValue, p.DecimalPlaces) + range + "</td>");
+            sb.Append("<td data-label=\"ACT\" class=\"text-end fw-semibold\">" + h.Num(p.ActualValue, p.DecimalPlaces) + "</td>");
+            sb.Append("<td data-label=\"Variance\" class=\"text-end\">" + (p.Variance.HasValue ? (p.Variance.Value > 0 ? "+" : "") + h.Num(p.Variance, p.DecimalPlaces) : "-")
+                      + (p.VariancePct.HasValue ? "<div class=\"small text-muted\">" + (p.VariancePct.Value > 0 ? "+" : "") + p.VariancePct.Value.ToString("0.0") + "%</div>" : "") + "</td>");
+            sb.Append("<td data-label=\"Status\">" + (p.ActualValue.HasValue ? h.StatusBadge(p.StatusCode).ToHtmlString() : "<span class=\"text-muted small\">not entered</span>") + "</td>");
+        }
+        sb.Append("</tr>");
+        return new HtmlString(sb.ToString());
+    }
+
+    IHtmlString InfoRow(string sno, string label, string value)
+    {
+        return new HtmlString("<tr><td class=\"text-center text-muted\">" + sno + "</td><td class=\"fw-semibold\">" + label + "</td>"
+                              + "<td colspan=\"4\" class=\"fw-semibold\">" + HttpUtility.HtmlEncode(value ?? "-") + "</td></tr>");
+    }
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-clipboard2-data text-brand me-2"></i>Flock Production Performance Analysis</h1>
+    @if (w != null)
+    {
+        <div class="d-flex flex-wrap gap-2 no-print">
+            <a class="btn btn-sm btn-outline-secondary @(Model.PrevWeekID.HasValue ? "" : "disabled")" href="@(Model.PrevWeekID.HasValue ? Url.Action("Production", new { id = Model.PrevWeekID }) : "#")"><i class="bi bi-chevron-left"></i> Week @(w.WeekNo - 1)</a>
+            <a class="btn btn-sm btn-outline-secondary @(Model.NextWeekID.HasValue ? "" : "disabled")" href="@(Model.NextWeekID.HasValue ? Url.Action("Production", new { id = Model.NextWeekID }) : "#")">Week @(w.WeekNo + 1) <i class="bi bi-chevron-right"></i></a>
+            @if (Model.CanEdit)
+            {
+                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Entry", "Weekly", new { flockId = w.FlockID, weekNo = w.WeekNo, tab = "production" })"><i class="bi bi-pencil me-1"></i>Edit entry</a>
+            }
+            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Weekly", new { id = w.FlockWeeklyID })"><i class="bi bi-clipboard-data me-1"></i>Weight analysis</a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-export-csv="#sheet" data-export-name="Production performance @w.FlockNumber week @w.WeekNo"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Index", "Report", new { ReportType = "PRODUCTION_PERFORMANCE", FlockID = w.FlockID })"><i class="bi bi-file-earmark-excel me-1"></i>All weeks (report)</a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button>
+        </div>
+    }
+</div>
+
+<div class="no-print">@Html.Partial("_FlockPicker", Model.Picker)</div>
+
+@if (w == null)
+{
+    <div class="text-muted text-center py-5">Select a flock (and week) to see its production performance. Only weeks that have been entered can be analysed.</div>
+}
+else
+{
+    var eggsNote = prod != null && prod.TotalEggs.HasValue
+        ? string.Format("{0:N0} eggs, {1:N0} hatching eggs ({2}), hen-days {3:N0}", prod.TotalEggs, prod.HatchingEggs ?? 0,
+            prod.HatchingEggPct.HasValue ? prod.HatchingEggPct.Value.ToString("0.0") + "%" : "-", prod.HenDays ?? 0)
+        : "No eggs recorded for this week";
+    var fertNote = hatch.Count == 0 ? "No hatch result yet for eggs of this week"
+        : string.Format("{0} setting(s), {1:N0} eggs set, {2:N0} infertile", hatch.Count, hatch.Sum(x => x.SettableEggs), hatch.Sum(x => x.InfertileEggs));
+    var hatched = hatch.Where(x => x.IsHatched).ToList();
+    var hatchNote = hatch.Count == 0 ? "No hatch result yet for eggs of this week"
+        : hatched.Count == 0 ? "Eggs still in incubation"
+        : string.Format("{0:N0} chicks from {1:N0} eggs set", hatched.Sum(x => x.HatchedChicks), hatched.Sum(x => x.SettableEggs));
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
+            <span class="fw-semibold">@w.FlockNumber &middot; week @w.WeekNo &middot; @w.EntryDate.ToString("dd-MMM-yyyy")</span>
+            <span class="small text-muted">@w.FarmName / @w.HouseName &middot; @w.BreedName &middot; closing birds @w.ClosingPopulation.ToString("N0") (F @w.ClosingFemale.ToString("N0") / M @w.ClosingMale.ToString("N0"))</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0 table-stack" id="sheet">
+                <thead class="table-light">
+                    <tr><th class="text-center" style="width:60px">S No</th><th>Parameters</th><th class="text-end" style="width:150px">STD</th><th class="text-end" style="width:130px">ACT</th><th class="text-end" style="width:130px">Variance</th><th style="width:150px">Status</th></tr>
+                </thead>
+                <tbody>
+                    @InfoRow("1", "Bird type", w.BirdTypeName)
+                    @InfoRow("2", "Flock No", w.FlockNumber)
+                    @InfoRow("3", "Lot No", w.LotNumber)
+                    @InfoRow("4", "Age", w.AgeInWeeks + " weeks")
+                    @InfoRow("5", "Feed type", (w.FeedTypeName ?? "-") + (w.FormulaCode != null ? " (" + w.FormulaCode + ")" : ""))
+                    @Row(Html, "6", "Feed Intake", "FEED_INTAKE", null, null, 1)
+                    @Row(Html, "7", "Body weight", "BODY_WEIGHT", null, null, 1)
+                    @Row(Html, "8", "Energy", "ENERGY", null, null, 1)
+                    @Row(Html, "9", "Protein", "PROTEIN", null, null, 1)
+                    @Row(Html, "10", "Methionine", "METHIONINE", null, null, 1)
+                    @Row(Html, "11", "Lysine", "LYSINE", null, null, 1)
+                    @Row(Html, "12", "Linoleic acid", "LINOLEIC_ACID", null, null, 1)
+                    @Row(Html, "13", "Calcium", "CALCIUM", null, null, 1)
+                    @Row(Html, "14", "Phosphorus", "PHOSPHORUS", null, null, 1)
+                    @Row(Html, "15", "Fat", "FAT", null, null, 1)
+                    @Row(Html, "16", "Fibre", "FIBRE", null, null, 1)
+                    @Row(Html, "17", "Salt", "SALT", null, null, 1)
+                    @Row(Html, "18", "Egg Production (hen-day)", "HD_PRODUCTION", eggsNote, null, 2)
+                    @Row(Html, "", "&nbsp;&nbsp;Hatching eggs", "HATCHING_EGG_PCT", null, null, 0)
+                    @Row(Html, "19", "Egg weight", "EGG_WEIGHT", null, null, 1)
+                    @Row(Html, "20", "Fertility", "FERTILITY", fertNote, null, 1)
+                    @Row(Html, "21", "Hatchability", "HATCHABILITY", hatchNote, null, 1)
+                    @Row(Html, "22", "Weekly mortality", "MORTALITY", w.TotalMortality.ToString("N0") + " birds of " + w.OpeningPopulation.ToString("N0"), null, 1)
+                    @Row(Html, "23", "Lighting", "LIGHT_HOURS", null, "hours / day", 2)
+                    @Row(Html, "", "&nbsp;&nbsp;Light intensity", "LIGHT_INTENSITY", null, null, 0)
+                    @Row(Html, "24", "Temperature &ndash; Day", "TEMP_DAY", null, null, 2)
+                    @Row(Html, "", "Temperature &ndash; Night", "TEMP_NIGHT", null, null, 0)
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white small text-muted">
+            Hen-day production = eggs &divide; (average females &times; 7) &times; 100. Fertility and hatchability are for the eggs <em>laid in this week</em>; they are filled in from <strong>Hatch Results</strong> after candling and hatching. Standards are the sample values until replaced with your breed guide.
+        </div>
+    </div>
+
+    if (hatch.Count > 0)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold">Hatch results of week @w.WeekNo eggs</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light"><tr><th>Set date</th><th class="text-end">Eggs set</th><th class="text-end">Infertile</th><th class="text-end">Fertility %</th><th>Hatch date</th><th class="text-end">Chicks</th><th class="text-end">Hatchability %</th><th class="text-end">Hatch of fertile %</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in hatch)
+                        {
+                            <tr>
+                                <td>@h.SetDate.ToString("dd-MMM-yyyy")</td>
+                                <td class="text-end">@h.SettableEggs.ToString("N0")</td>
+                                <td class="text-end">@h.InfertileEggs.ToString("N0")</td>
+                                <td class="text-end fw-semibold">@Html.Num(h.FertilityPct, 2)</td>
+                                <td>@(h.HatchDate.HasValue ? h.HatchDate.Value.ToString("dd-MMM-yyyy") : "in incubation")</td>
+                                <td class="text-end">@(h.IsHatched ? h.HatchedChicks.ToString("N0") : "-")</td>
+                                <td class="text-end fw-semibold">@Html.Num(h.HatchabilityPct, 2)</td>
+                                <td class="text-end">@Html.Num(h.HatchOfFertilePct, 2)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Trend to this week</span>
+                    <select class="form-select form-select-sm w-auto no-print" id="trendParam">
+                        <option value="HD_PRODUCTION">Egg Production</option>
+                        <option value="EGG_WEIGHT">Egg Weight</option>
+                        <option value="FERTILITY">Fertility</option>
+                        <option value="HATCHABILITY">Hatchability</option>
+                        <option value="BODY_WEIGHT">Body Weight</option>
+                        <option value="FEED_INTAKE">Feed Intake</option>
+                    </select>
+                </div>
+                <div class="card-body"><div style="height:280px"><canvas id="trendChart"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Environment</span>
+                    <select class="form-select form-select-sm w-auto no-print" id="envParam">
+                        <option value="TEMP_DAY">Temperature (Day)</option>
+                        <option value="TEMP_NIGHT">Temperature (Night)</option>
+                        <option value="LIGHT_HOURS">Lighting (hours)</option>
+                        <option value="LIGHT_INTENSITY">Light Intensity</option>
+                    </select>
+                </div>
+                <div class="card-body"><div style="height:280px"><canvas id="envChart"></canvas></div></div>
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+@if (w != null)
+{
+    <script>
+        $(function () {
+            var week = @w.WeekNo, trend = null, weeklyUrl = '@Url.Action("Production")/';
+            function draw(canvas, code) {
+                var s = fwm.findSeries(trend, code);
+                var el = document.getElementById(canvas);
+                if (!s) { if (fwm.charts[canvas]) { fwm.charts[canvas].destroy(); delete fwm.charts[canvas]; } $(el).parent().attr('data-empty', 'No data yet'); return; }
+                var cut = $.extend({}, s, { points: s.points.filter(function (p) { return p.w <= week && (p.a !== null || p.s !== null); }) });
+                fwm.stdActualChart(canvas, cut, {
+                    onClick: function (e, els) { if (els.length) { var p = cut.points[els[0].index]; if (p && p.id) location.href = weeklyUrl + p.id; } }
+                });
+            }
+            fwm.loadTrend('@Url.Action("TrendData")', @w.FlockID).done(function (t) {
+                trend = t;
+                draw('trendChart', $('#trendParam').val());
+                draw('envChart', $('#envParam').val());
+            });
+            $('#trendParam').on('change', function () { draw('trendChart', this.value); });
+            $('#envParam').on('change', function () { draw('envChart', this.value); });
+        });
+    </script>
+}
+}

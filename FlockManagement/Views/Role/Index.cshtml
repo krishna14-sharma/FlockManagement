@@ -1,0 +1,42 @@
+@model System.Collections.Generic.IList<Role>
+@{
+    ViewBag.Title = "Roles & Permissions";
+    var canEdit = (bool)ViewBag.CanEdit;
+}
+@Html.Partial("_ListHeader", new ViewDataDictionary { { "Title", "Roles & Permissions" }, { "Icon", "bi-shield-lock" }, { "CanEdit", canEdit }, { "CreateUrl", Url.Action("Create") }, { "CreateText", "Add Role" } })
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-stack">
+            <thead class="table-light">
+                <tr>
+                    <th>Role</th>
+                    <th>Description</th>
+                    <th class="text-end">Users</th>
+                    <th class="text-end">Permissions</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td data-label="Role"><span class="fw-semibold">@r.RoleName</span> @if (r.IsSystem) { <span class="badge text-bg-light border">System</span> }</td>
+                        <td data-label="Description">@r.Description</td>
+                        <td data-label="Users" class="text-end">@r.UserCount</td>
+                        <td data-label="Permissions" class="text-end">@r.PermissionCount</td>
+                        <td data-label="Status">@Html.ActiveBadge(r.IsActive)</td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Permissions", new { id = r.RoleID })" title="Permissions"><i class="bi bi-ui-checks-grid"></i></a>
+                            @if (canEdit)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = r.RoleID })" title="Edit"><i class="bi bi-pencil"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,84 @@
+@model UserEditViewModel
+@{
+    var isNew = Model.UserID == 0;
+    ViewBag.Title = isNew ? "New User" : "Edit User " + Model.UserName;
+}
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-9">
+        <h1 class="h4 mb-3"><i class="bi bi-person-gear text-brand me-2"></i>@ViewBag.Title</h1>
+        @using (Html.BeginForm("Save", "User", FormMethod.Post, new { @class = "card shadow-sm", novalidate = "novalidate", autocomplete = "off" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.UserID)
+            <div class="card-body">
+                @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.UserName, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.UserName, new { @class = "form-control text-lowercase", maxlength = 50, autocomplete = "off", autocapitalize = "none" })
+                        @Html.ValidationMessageFor(m => m.UserName, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-8">
+                        @Html.LabelFor(m => m.FullName, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.FullName, new { @class = "form-control", maxlength = 100 })
+                        @Html.ValidationMessageFor(m => m.FullName, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.Email, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Email, new { @class = "form-control", type = "email", maxlength = 150 })
+                        @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.MobileNumber, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.MobileNumber, new { @class = "form-control", type = "tel", maxlength = 20 })
+                        @Html.ValidationMessageFor(m => m.MobileNumber, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.RoleID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.RoleID, Model.Roles, new { @class = "form-select" })
+                        @Html.ValidationMessageFor(m => m.RoleID, "", new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.FarmID, new { @class = "form-label" })
+                        @Html.DropDownListFor(m => m.FarmID, Model.Farms, new { @class = "form-select" })
+                        <div class="form-text">A restricted user only sees flocks, houses and lots of this farm.</div>
+                    </div>
+
+                    @if (isNew)
+                    {
+                        <div class="col-md-6">
+                            @Html.LabelFor(m => m.Password, new { @class = "form-label required" })
+                            @Html.PasswordFor(m => m.Password, new { @class = "form-control", autocomplete = "new-password" })
+                            @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
+                        </div>
+                        <div class="col-md-6">
+                            @Html.LabelFor(m => m.ConfirmPassword, new { @class = "form-label required" })
+                            @Html.PasswordFor(m => m.ConfirmPassword, new { @class = "form-control", autocomplete = "new-password" })
+                            @Html.ValidationMessageFor(m => m.ConfirmPassword, "", new { @class = "text-danger small" })
+                        </div>
+                        <div class="col-12"><div class="form-text">The user must change this password at first login.</div></div>
+                    }
+
+                    <div class="col-12 d-flex flex-wrap gap-4">
+                        <div class="form-check form-switch">
+                            @Html.CheckBoxFor(m => m.IsActive, new { @class = "form-check-input", role = "switch" })
+                            @Html.LabelFor(m => m.IsActive, new { @class = "form-check-label" })
+                        </div>
+                        @if (!isNew)
+                        {
+                            <div class="form-check form-switch">
+                                @Html.CheckBoxFor(m => m.IsLocked, new { @class = "form-check-input", role = "switch" })
+                                <label class="form-check-label" for="IsLocked">Locked <small class="text-muted">(untick to unlock after failed logins)</small></label>
+                            </div>
+                        }
+                    </div>
+                    @if (Model.LastLoginDate.HasValue)
+                    {
+                        <div class="col-12 small text-muted">Last login: @Model.LastLoginDate.Value.ToString("dd-MMM-yyyy HH:mm")</div>
+                    }
+                </div>
+                @Html.Partial("_FormButtons")
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,460 @@
+@model WeeklyEntryViewModel
+@using Newtonsoft.Json
+@functions {
+    // option list for repeated rows (Html.DropDownList would reuse the bound value of row 0)
+    IHtmlString Options(IEnumerable<SelectListItem> items, int? selected)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var i in items)
+        {
+            var sel = selected.HasValue && i.Value == selected.Value.ToString() ? " selected" : "";
+            sb.Append("<option value=\"").Append(HttpUtility.HtmlAttributeEncode(i.Value)).Append("\"").Append(sel).Append(">")
+              .Append(HttpUtility.HtmlEncode(i.Text)).Append("</option>");
+        }
+        return new HtmlString(sb.ToString());
+    }
+}
+@{
+    ViewBag.Title = "Weekly Flock Entry";
+    var d = Model.Data;
+    var ctx = d != null ? d.Context : null;
+    var tabs = new[]
+    {
+        new { Key = "population", Text = "Population & Mortality", Icon = "bi-people" },
+        new { Key = "weight", Text = "Body Weight & Uniformity", Icon = "bi-speedometer2" },
+        new { Key = "feed", Text = "Feed", Icon = "bi-basket" },
+        new { Key = "nutrition", Text = "Nutrition", Icon = "bi-eyedropper" },
+        new { Key = "production", Text = "Production & Environment", Icon = "bi-egg-fried" },
+        new { Key = "summary", Text = "Summary", Icon = "bi-clipboard-data" }
+    };
+    var nutrientStds = d != null ? d.Standards.Where(s => s.ParameterGroup == "NUTRITION").OrderBy(s => s.SortOrder).ToList() : new List<FlockManagement.Common.Entities.ParameterStandard>();
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-calendar-week text-brand me-2"></i>Weekly Flock Entry</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Index", new { flockId = Model.Picker.FlockID })"><i class="bi bi-journal-text me-1"></i>Weekly register</a>
+</div>
+
+@Html.Partial("_FlockPicker", Model.Picker)
+
+@if (ctx == null)
+{
+    <div class="text-muted text-center py-5"><i class="bi bi-arrow-up-circle fs-2 d-block mb-2"></i>Select a flock to start the weekly entry.</div>
+}
+else
+{
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 small">
+                <div class="col-6 col-md-2"><div class="text-muted">Flock</div><div class="fw-semibold">@ctx.FlockNumber</div></div>
+                <div class="col-6 col-md-2"><div class="text-muted">Farm / House</div><div class="fw-semibold">@ctx.FarmName / @ctx.HouseName</div></div>
+                <div class="col-6 col-md-2"><div class="text-muted">Bird Type / Breed</div><div class="fw-semibold">@ctx.BirdTypeName / @ctx.BreedName</div></div>
+                <div class="col-6 col-md-2"><div class="text-muted">Week</div><div class="fw-semibold">@ctx.WeekNo <span class="text-muted fw-normal">(@ctx.WeekStart.ToString("dd-MMM") &ndash; @ctx.WeekEnd.ToString("dd-MMM-yyyy"))</span></div></div>
+                <div class="col-6 col-md-2"><div class="text-muted">Opening birds</div><div class="fw-semibold">@ctx.OpeningPopulation.ToString("N0") <span class="text-muted fw-normal">(F @ctx.OpeningFemale.ToString("N0") / M @ctx.OpeningMale.ToString("N0"))</span></div></div>
+                <div class="col-6 col-md-2"><div class="text-muted">Entry</div><div>@(ctx.IsNew ? Html.Raw("<span class=\"badge text-bg-primary\">New</span>") : Html.Raw("<span class=\"badge text-bg-secondary\">Editing saved week</span>"))</div></div>
+            </div>
+        </div>
+    </div>
+
+    if (!ctx.CanEnter)
+    {
+        <div class="alert alert-warning"><i class="bi bi-lock me-1"></i>This week cannot be entered. Weeks must be entered in order &ndash; the next week to enter is <strong>week @ctx.NextWeek</strong>@(ctx.Status != "Active" ? ", and the flock is " + ctx.Status : "").</div>
+    }
+
+    using (Html.BeginForm("Save", "Weekly", FormMethod.Post, new { id = "weeklyForm", novalidate = "novalidate" }))
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(m => m.FlockWeeklyID)
+        @Html.HiddenFor(m => m.FlockID)
+        @Html.HiddenFor(m => m.WeekNo)
+        @Html.HiddenFor(m => m.RowVersion)
+        <input type="hidden" name="Tab" id="Tab" value="@Model.Tab" />
+        @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
+
+        <ul class="nav nav-tabs flex-nowrap overflow-auto" role="tablist">
+            @foreach (var t in tabs)
+            {
+                <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link text-nowrap @(Model.Tab == t.Key ? "active" : "")" data-bs-toggle="tab" data-bs-target="#tab-@t.Key" data-tab="@t.Key" role="tab"><i class="bi @t.Icon me-1"></i>@t.Text</button>
+                </li>
+            }
+        </ul>
+        <div class="tab-content card card-body border-top-0 rounded-0 rounded-bottom shadow-sm mb-3">
+
+            @* ---------------------------------------------------- POPULATION *@
+            <div class="tab-pane fade @(Model.Tab == "population" ? "show active" : "")" id="tab-population" role="tabpanel">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        @Html.LabelFor(m => m.EntryDate, new { @class = "form-label required" })
+                        @Html.TextBoxFor(m => m.EntryDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                        @Html.ValidationMessageFor(m => m.EntryDate, "", new { @class = "text-danger small" })
+                    </div>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm align-middle mb-0" style="max-width:720px">
+                        <thead class="table-light"><tr><th></th><th class="text-end" style="width:150px">Female</th><th class="text-end" style="width:150px">Male</th><th class="text-end" style="width:120px">Total</th></tr></thead>
+                        <tbody>
+                            <tr><td>Opening birds</td><td class="text-end">@ctx.OpeningFemale.ToString("N0")</td><td class="text-end">@ctx.OpeningMale.ToString("N0")</td><td class="text-end fw-semibold">@ctx.OpeningPopulation.ToString("N0")</td></tr>
+                            <tr><td>+ Received (placements / transfers in)</td><td class="text-end">@ctx.ReceivedFemale.ToString("N0")</td><td class="text-end">@ctx.ReceivedMale.ToString("N0")</td><td class="text-end">@((ctx.ReceivedFemale + ctx.ReceivedMale).ToString("N0"))</td></tr>
+                            <tr>
+                                <td>&minus; Mortality</td>
+                                <td>@Html.TextBoxFor(m => m.FemaleMortality, new { @class = "form-control form-control-sm text-end js-pop", type = "number", min = 0 })</td>
+                                <td>@Html.TextBoxFor(m => m.MaleMortality, new { @class = "form-control form-control-sm text-end js-pop", type = "number", min = 0 })</td>
+                                <td class="text-end" id="totMort">-</td>
+                            </tr>
+                            <tr>
+                                <td>&minus; Culling</td>
+                                <td>@Html.TextBoxFor(m => m.FemaleCulling, new { @class = "form-control form-control-sm text-end js-pop", type = "number", min = 0 })</td>
+                                <td>@Html.TextBoxFor(m => m.MaleCulling, new { @class = "form-control form-control-sm text-end js-pop", type = "number", min = 0 })</td>
+                                <td class="text-end" id="totCull">-</td>
+                            </tr>
+                            <tr><td>&minus; Transferred out</td><td class="text-end">@ctx.TransferOutFemale.ToString("N0")</td><td class="text-end">@ctx.TransferOutMale.ToString("N0")</td><td class="text-end">@((ctx.TransferOutFemale + ctx.TransferOutMale).ToString("N0"))</td></tr>
+                            <tr class="table-light fw-semibold"><td>= Closing birds</td><td class="text-end" id="closeF">-</td><td class="text-end" id="closeM">-</td><td class="text-end" id="closeT">-</td></tr>
+                            <tr><td>Weekly mortality %</td><td class="text-end" id="mortPctF">-</td><td class="text-end" id="mortPctM">-</td><td class="text-end"><span id="mortPct">-</span> <span id="mortStatus"></span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="popError" class="alert alert-danger small mt-2 d-none"></div>
+
+                <h2 class="h6 mt-4">Mortality by reason <small class="text-muted fw-normal">(optional &ndash; should add up to the mortality and culling above)</small></h2>
+                <div class="table-responsive" style="max-width:720px">
+                    <table class="table table-sm align-middle mb-1" id="reasonTable">
+                        <thead class="table-light"><tr><th>Reason</th><th style="width:120px">Sex</th><th class="text-end" style="width:120px">Birds</th><th style="width:50px"></th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.MortalityReasons)
+                            {
+                                <tr class="reason-row">
+                                    <td><select class="form-select form-select-sm" name="MortalityReasons[0].MortalityReasonID">@Options(Model.Reasons, r.MortalityReasonID)</select></td>
+                                    <td><select class="form-select form-select-sm" name="MortalityReasons[0].Sex"><option value="F" @(r.Sex == "F" ? "selected" : null)>Female</option><option value="M" @(r.Sex == "M" ? "selected" : null)>Male</option></select></td>
+                                    <td><input type="number" min="0" class="form-control form-control-sm text-end js-reason-count" name="MortalityReasons[0].BirdCount" value="@r.BirdCount" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-row" title="Remove"><i class="bi bi-x"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="addReason"><i class="bi bi-plus"></i> Add reason</button>
+                        <small class="text-muted" id="reasonCheck"></small>
+                    </div>
+                </div>
+                <template id="reasonTemplate">
+                    <tr class="reason-row">
+                        <td><select class="form-select form-select-sm" name="MortalityReasons[0].MortalityReasonID">@Options(Model.Reasons, null)</select></td>
+                        <td><select class="form-select form-select-sm" name="MortalityReasons[0].Sex"><option value="F">Female</option><option value="M">Male</option></select></td>
+                        <td><input type="number" min="0" class="form-control form-control-sm text-end js-reason-count" name="MortalityReasons[0].BirdCount" /></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-row" title="Remove"><i class="bi bi-x"></i></button></td>
+                    </tr>
+                </template>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.MortalityReasonID, new { @class = "form-label" })
+                        @Html.DropDownListFor(m => m.MortalityReasonID, Model.Reasons, new { @class = "form-select" })
+                    </div>
+                    <div class="col-md-8">
+                        @Html.LabelFor(m => m.Remarks, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Remarks, new { @class = "form-control", maxlength = 500 })
+                    </div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------- WEIGHT *@
+            <div class="tab-pane fade @(Model.Tab == "weight" ? "show active" : "")" id="tab-weight" role="tabpanel">
+                <p class="small text-muted mb-3">Type or paste the individual bird weights in grams, separated by spaces, commas or new lines (a column copied from Excel works). Average, CV and uniformity are worked out as you type. Uniformity = birds within &plusmn;@d.UniformityRangePct.ToString("0.#", inv)% of the average.</p>
+                <div class="row g-3">
+                    @foreach (var sex in new[] { "F", "M" })
+                    {
+                        var placed = sex == "F" ? ctx.PlacedFemales : ctx.PlacedMales;
+                        if (placed == 0 && sex == "M" && string.IsNullOrEmpty(Model.SamplesMale)) { continue; }
+                        <div class="col-lg-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-white fw-semibold">@(sex == "F" ? "Female" : "Male") samples</div>
+                                <div class="card-body">
+                                    <textarea class="form-control font-monospace js-samples" data-sex="@sex" name="@(sex == "F" ? "SamplesFemale" : "SamplesMale")" rows="5" placeholder="e.g. 2150 2210 2080 ...">@(sex == "F" ? Model.SamplesFemale : Model.SamplesMale)</textarea>
+                                    <div class="row g-2 small mt-2 text-center">
+                                        <div class="col-4 col-md-2"><div class="text-muted">Birds</div><div class="fw-semibold" data-stat="n">-</div></div>
+                                        <div class="col-4 col-md-2"><div class="text-muted">Avg (g)</div><div class="fw-semibold" data-stat="avg">-</div></div>
+                                        <div class="col-4 col-md-2"><div class="text-muted">Min</div><div data-stat="min">-</div></div>
+                                        <div class="col-4 col-md-2"><div class="text-muted">Max</div><div data-stat="max">-</div></div>
+                                        <div class="col-4 col-md-2"><div class="text-muted">CV %</div><div data-stat="cv">-</div></div>
+                                        <div class="col-4 col-md-2"><div class="text-muted">Uniformity</div><div class="fw-semibold" data-stat="uni">-</div></div>
+                                    </div>
+                                    <div class="small mt-2" data-stat="status"></div>
+                                    <div class="mt-2" style="height:160px"><canvas id="hist@(sex)"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.ManualBodyWeight, new { @class = "form-label" })
+                        <div class="input-group">
+                            @Html.TextBoxFor(m => m.ManualBodyWeight, new { @class = "form-control text-end", type = "number", step = "1", min = 0 })
+                            <span class="input-group-text">g</span>
+                        </div>
+                        <div class="form-text">Only used when no samples are entered (no uniformity is calculated).</div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="small text-muted">Previous week body weight: <strong>@Html.Num(ctx.PrevBodyWeight, 0) g</strong> &middot; weight gain this week: <strong id="gainVal">-</strong> <span id="gainStatus"></span></div>
+                    </div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------- FEED *@
+            <div class="tab-pane fade @(Model.Tab == "feed" ? "show active" : "")" id="tab-feed" role="tabpanel">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.FeedTypeID, new { @class = "form-label required" })
+                        @Html.DropDownListFor(m => m.FeedTypeID, Model.FeedTypes, new { @class = "form-select" })
+                        <div class="form-text">Main feed this week &ndash; picks the feed-specific standards.</div>
+                    </div>
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.FeedFormulaID, new { @class = "form-label" })
+                        @Html.DropDownListFor(m => m.FeedFormulaID, Model.Formulas, new { @class = "form-select" })
+                        <div class="form-text">Supplies the nutrient values when no lab analysis is entered.</div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-1" id="feedTable">
+                        <thead class="table-light"><tr><th>Feed Type</th><th>Formula</th><th style="width:120px">For</th><th class="text-end" style="width:140px">Quantity (kg)</th><th class="text-end" style="width:130px">Wastage (kg)</th><th style="width:50px"></th></tr></thead>
+                        <tbody>
+                            @foreach (var f in Model.FeedLines)
+                            {
+                                <tr class="feed-row">
+                                    <td><select class="form-select form-select-sm js-feedtype" name="FeedLines[0].FeedTypeID">@Options(Model.FeedTypes, f.FeedTypeID)</select></td>
+                                    <td><select class="form-select form-select-sm js-formula" name="FeedLines[0].FeedFormulaID">@Options(Model.Formulas, f.FeedFormulaID)</select></td>
+                                    <td><select class="form-select form-select-sm js-sex" name="FeedLines[0].Sex"><option value="B" @(f.Sex == "B" ? "selected" : null)>All birds</option><option value="F" @(f.Sex == "F" ? "selected" : null)>Female</option><option value="M" @(f.Sex == "M" ? "selected" : null)>Male</option></select></td>
+                                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end js-qty" name="FeedLines[0].QuantityKg" value="@(f.QuantityKg.HasValue ? f.QuantityKg.Value.ToString("0.##", inv) : "")" /></td>
+                                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end js-waste" name="FeedLines[0].WastageKg" value="@(f.WastageKg.HasValue ? f.WastageKg.Value.ToString("0.##", inv) : "")" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-row" title="Remove"><i class="bi bi-x"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="addFeed"><i class="bi bi-plus"></i> Add feed line</button>
+                </div>
+                <template id="feedTemplate">
+                    <tr class="feed-row">
+                        <td><select class="form-select form-select-sm js-feedtype" name="FeedLines[0].FeedTypeID">@Options(Model.FeedTypes, null)</select></td>
+                        <td><select class="form-select form-select-sm js-formula" name="FeedLines[0].FeedFormulaID">@Options(Model.Formulas, null)</select></td>
+                        <td><select class="form-select form-select-sm js-sex" name="FeedLines[0].Sex"><option value="B">All birds</option><option value="F">Female</option><option value="M">Male</option></select></td>
+                        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end js-qty" name="FeedLines[0].QuantityKg" /></td>
+                        <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end js-waste" name="FeedLines[0].WastageKg" /></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-row" title="Remove"><i class="bi bi-x"></i></button></td>
+                    </tr>
+                </template>
+                <div class="row g-2 small mt-3" style="max-width:720px">
+                    <div class="col-4"><div class="text-muted">Total feed</div><div class="fw-semibold" id="feedTotal">-</div></div>
+                    <div class="col-4"><div class="text-muted">Bird-days (avg birds &times; 7)</div><div class="fw-semibold" id="birdDays">-</div></div>
+                    <div class="col-4"><div class="text-muted">Feed intake (g/bird/day)</div><div class="fw-semibold"><span id="intake">-</span> <span id="intakeStatus"></span></div><div class="text-muted" id="intakeStd"></div></div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------- NUTRITION *@
+            <div class="tab-pane fade @(Model.Tab == "nutrition" ? "show active" : "")" id="tab-nutrition" role="tabpanel">
+                <div class="d-flex flex-wrap gap-4 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="NutritionSource" id="srcF" value="F" @(Model.NutritionSource != "L" ? "checked" : null) />
+                        <label class="form-check-label" for="srcF">Use the feed formula's declared values</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="NutritionSource" id="srcL" value="L" @(Model.NutritionSource == "L" ? "checked" : null) />
+                        <label class="form-check-label" for="srcL">Enter lab analysis results</label>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3 js-lab">
+                    <div class="col-md-4">
+                        @Html.LabelFor(m => m.LabSampleRef, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.LabSampleRef, new { @class = "form-control", maxlength = 50 })
+                    </div>
+                    <div class="col-md-3">
+                        @Html.LabelFor(m => m.AnalysisDate, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.AnalysisDate, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 table-stack" id="nutrientTable">
+                        <thead class="table-light"><tr><th>Nutrient</th><th>Unit</th><th class="text-end">Standard</th><th class="text-end">Min &ndash; Max</th><th class="text-end">Formula</th><th class="text-end" style="width:150px">Lab Value</th><th class="text-end">Used</th><th class="text-end">Variance</th><th>Status</th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < nutrientStds.Count; i++)
+                            {
+                                var s = nutrientStds[i];
+                                var entered = Model.Nutrients.FirstOrDefault(n => n.ParameterID == s.ParameterID);
+                                <tr class="nutrient-row" data-code="@s.ParameterCode">
+                                    <td data-label="Nutrient" class="fw-semibold">@s.ParameterName
+                                        <input type="hidden" name="Nutrients[@i].ParameterID" value="@s.ParameterID" />
+                                        <input type="hidden" name="Nutrients[@i].ParameterCode" value="@s.ParameterCode" />
+                                    </td>
+                                    <td data-label="Unit" class="text-muted">@s.UnitCode</td>
+                                    <td data-label="Standard" class="text-end">@Html.Num(s.StandardValue, s.DecimalPlaces)</td>
+                                    <td data-label="Min - Max" class="text-end text-muted small">@Html.Num(s.MinValue, s.DecimalPlaces) &ndash; @Html.Num(s.MaxValue, s.DecimalPlaces)</td>
+                                    <td data-label="Formula" class="text-end js-formula-val">-</td>
+                                    <td data-label="Lab Value"><input type="number" step="any" min="0" class="form-control form-control-sm text-end js-lab-val" name="Nutrients[@i].Value" value="@(entered != null && entered.Value.HasValue ? entered.Value.Value.ToString("0.####", inv) : "")" /></td>
+                                    <td data-label="Used" class="text-end fw-semibold js-used">-</td>
+                                    <td data-label="Variance" class="text-end js-var">-</td>
+                                    <td data-label="Status" class="js-status"></td>
+                                </tr>
+                            }
+                            @if (nutrientStds.Count == 0)
+                            {
+                                <tr><td colspan="9" class="text-center text-muted py-3">No nutrition standards are set for this bird type and week.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------- PRODUCTION & ENVIRONMENT *@
+            <div class="tab-pane fade @(Model.Tab == "production" ? "show active" : "")" id="tab-production" role="tabpanel">
+                @if (ctx.PlacedFemales > 0)
+                {
+                    <h2 class="h6">Egg production <small class="text-muted fw-normal">(leave blank before the flock comes into lay)</small></h2>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label" for="Production_TotalEggs">Total eggs collected (week)</label>
+                            @Html.TextBoxFor(m => m.Production.TotalEggs, new { @class = "form-control text-end js-prod", type = "number", min = 0 })
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label" for="Production_HatchingEggs">Hatching eggs</label>
+                            @Html.TextBoxFor(m => m.Production.HatchingEggs, new { @class = "form-control text-end js-prod", type = "number", min = 0 })
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label" for="Production_AvgEggWeight">Average egg weight</label>
+                            <div class="input-group">
+                                @Html.TextBoxFor(m => m.Production.AvgEggWeight, new { @class = "form-control text-end js-prod", type = "number", step = "0.1", min = 20, max = 120 })
+                                <span class="input-group-text">g</span>
+                            </div>
+                        </div>
+                    </div>
+                    <details class="mt-2 small">
+                        <summary class="text-muted">Grading of the other eggs (optional)</summary>
+                        <div class="row g-2 mt-1">
+                            <div class="col-4 col-md-2"><label class="form-label small">Floor</label>@Html.TextBoxFor(m => m.Production.FloorEggs, new { @class = "form-control form-control-sm text-end js-prod", type = "number", min = 0 })</div>
+                            <div class="col-4 col-md-2"><label class="form-label small">Dirty</label>@Html.TextBoxFor(m => m.Production.DirtyEggs, new { @class = "form-control form-control-sm text-end js-prod", type = "number", min = 0 })</div>
+                            <div class="col-4 col-md-2"><label class="form-label small">Broken</label>@Html.TextBoxFor(m => m.Production.BrokenEggs, new { @class = "form-control form-control-sm text-end js-prod", type = "number", min = 0 })</div>
+                            <div class="col-4 col-md-2"><label class="form-label small">Cracked</label>@Html.TextBoxFor(m => m.Production.CrackedEggs, new { @class = "form-control form-control-sm text-end js-prod", type = "number", min = 0 })</div>
+                            <div class="col-4 col-md-2"><label class="form-label small">Double yolk</label>@Html.TextBoxFor(m => m.Production.DoubleYolkEggs, new { @class = "form-control form-control-sm text-end js-prod", type = "number", min = 0 })</div>
+                        </div>
+                    </details>
+                    <div class="row g-2 small mt-3" style="max-width:820px">
+                        <div class="col-6 col-md-3"><div class="text-muted">Hen-days (avg females &times; 7)</div><div class="fw-semibold" id="henDays">-</div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Egg production (hen-day)</div><div class="fw-semibold"><span id="hdPct">-</span> <span id="hdStatus"></span></div><div class="text-muted" id="hdStd"></div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Hatching eggs</div><div class="fw-semibold"><span id="hePct">-</span> <span id="heStatus"></span></div><div class="text-muted" id="heStd"></div></div>
+                        <div class="col-6 col-md-3"><div class="text-muted">Egg weight</div><div class="fw-semibold"><span id="ewVal">-</span> <span id="ewStatus"></span></div><div class="text-muted" id="ewStd"></div></div>
+                    </div>
+                    <div id="prodError" class="alert alert-danger small mt-2 d-none"></div>
+
+                    <h2 class="h6 mt-4">Fertility &amp; hatchability of this week's eggs</h2>
+                    var hatch = d.Existing != null && d.Existing.Production != null ? d.Existing.Production.HatchResults : new List<FlockManagement.Common.Entities.HatchResult>();
+                    if (hatch.Count == 0)
+                    {
+                        <p class="small text-muted mb-1">No hatch results yet. Fertility is known once the eggs are candled and hatchability after the hatch; record them under <strong>Transactions &rarr; Hatch Results</strong> against week @ctx.WeekNo.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive" style="max-width:820px">
+                            <table class="table table-sm align-middle mb-1">
+                                <thead class="table-light"><tr><th>Set date</th><th class="text-end">Eggs set</th><th class="text-end">Infertile</th><th class="text-end">Fertility %</th><th>Hatch date</th><th class="text-end">Chicks</th><th class="text-end">Hatchability %</th></tr></thead>
+                                <tbody>
+                                    @foreach (var h in hatch)
+                                    {
+                                        <tr>
+                                            <td>@h.SetDate.ToString("dd-MMM-yyyy")</td>
+                                            <td class="text-end">@h.SettableEggs.ToString("N0")</td>
+                                            <td class="text-end">@h.InfertileEggs.ToString("N0")</td>
+                                            <td class="text-end fw-semibold">@Html.Num(h.FertilityPct, 2)</td>
+                                            <td>@(h.HatchDate.HasValue ? h.HatchDate.Value.ToString("dd-MMM-yyyy") : "pending")</td>
+                                            <td class="text-end">@(h.IsHatched ? h.HatchedChicks.ToString("N0") : "-")</td>
+                                            <td class="text-end fw-semibold">@Html.Num(h.HatchabilityPct, 2)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="small text-muted">This is a male flock: no egg production. Record lighting and temperature below.</p>
+                }
+
+                <h2 class="h6 mt-4">Lighting &amp; temperature</h2>
+                <div class="table-responsive" style="max-width:820px">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light"><tr><th></th><th style="width:170px">Actual</th><th class="text-end">Standard</th><th class="text-end">Range</th><th>Status</th></tr></thead>
+                        <tbody>
+                            <tr data-env="LIGHT_HOURS"><td>Lighting (hours of light per day)</td><td><div class="input-group input-group-sm">@Html.TextBoxFor(m => m.Production.LightHours, new { @class = "form-control text-end js-env", type = "number", step = "0.5", min = 0, max = 24 })<span class="input-group-text">hrs</span></div></td><td class="text-end js-std">-</td><td class="text-end text-muted small js-rng">-</td><td class="js-st"></td></tr>
+                            <tr data-env="LIGHT_INTENSITY"><td>Light intensity at bird level</td><td><div class="input-group input-group-sm">@Html.TextBoxFor(m => m.Production.LightIntensity, new { @class = "form-control text-end js-env", type = "number", step = "1", min = 0 })<span class="input-group-text">lux</span></div></td><td class="text-end js-std">-</td><td class="text-end text-muted small js-rng">-</td><td class="js-st"></td></tr>
+                            <tr data-env="TEMP_DAY"><td>Temperature &ndash; day (average)</td><td><div class="input-group input-group-sm">@Html.TextBoxFor(m => m.Production.TempDay, new { @class = "form-control text-end js-env", type = "number", step = "0.1", min = -20, max = 60 })<span class="input-group-text">&deg;C</span></div></td><td class="text-end js-std">-</td><td class="text-end text-muted small js-rng">-</td><td class="js-st"></td></tr>
+                            <tr data-env="TEMP_NIGHT"><td>Temperature &ndash; night (average)</td><td><div class="input-group input-group-sm">@Html.TextBoxFor(m => m.Production.TempNight, new { @class = "form-control text-end js-env", type = "number", step = "0.1", min = -20, max = 60 })<span class="input-group-text">&deg;C</span></div></td><td class="text-end js-std">-</td><td class="text-end text-muted small js-rng">-</td><td class="js-st"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------- SUMMARY *@
+            <div class="tab-pane fade @(Model.Tab == "summary" ? "show active" : "")" id="tab-summary" role="tabpanel">
+                <p class="small text-muted">Live preview from the values on the other tabs. The saved analysis (score, alerts) is produced when you save.</p>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 table-stack" id="summaryTable">
+                        <thead class="table-light"><tr><th>Parameter</th><th>Unit</th><th class="text-end">Standard</th><th class="text-end">Actual</th><th class="text-end">Variance</th><th class="text-end">Variance %</th><th class="text-end">Previous Week</th><th>Status</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-4">
+            <div>
+                @if (Model.CanDelete)
+                {
+                    <button type="submit" form="deleteForm" class="btn btn-outline-danger" data-confirm="Delete week @ctx.WeekNo? Only the latest week can be deleted. This cannot be undone."><i class="bi bi-trash me-1"></i>Delete this week</button>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary js-prev-tab"><i class="bi bi-chevron-left"></i> Back</button>
+                <button type="button" class="btn btn-outline-primary js-next-tab">Next <i class="bi bi-chevron-right"></i></button>
+                @if (ctx.CanEnter || !ctx.IsNew)
+                {
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Week @ctx.WeekNo</button>
+                }
+            </div>
+        </div>
+    }
+
+    if (Model.CanDelete)
+    {
+        using (Html.BeginForm("DeleteLast", "Weekly", new { flockId = ctx.FlockID }, FormMethod.Post, new { id = "deleteForm" }))
+        {
+            @Html.AntiForgeryToken()
+        }
+    }
+
+    <script>
+        window.weeklyData = @Html.Raw(JsonConvert.SerializeObject(new
+        {
+            flockId = ctx.FlockID,
+            weekNo = ctx.WeekNo,
+            open = new { F = ctx.OpeningFemale, M = ctx.OpeningMale },
+            received = new { F = ctx.ReceivedFemale, M = ctx.ReceivedMale },
+            outBirds = new { F = ctx.TransferOutFemale, M = ctx.TransferOutMale },
+            prev = new { BODY_WEIGHT = ctx.PrevBodyWeight, WEIGHT_GAIN = ctx.PrevWeightGain, FEED_INTAKE = ctx.PrevFeedIntake, UNIFORMITY = ctx.PrevUniformity, MORTALITY = ctx.PrevMortalityPct },
+            mainSex = ctx.MainSex,
+            rangePct = d.UniformityRangePct,
+            standards = FlockManagement.Web.Controllers.WeeklyController.StandardsJson(d.Standards),
+            urls = new
+            {
+                standards = Url.Action("Standards", "Weekly"),
+                formulaValues = Url.Action("FormulaValues", "Weekly"),
+                formulas = Url.Action("FeedFormulas", "Lookup")
+            }
+        }));
+    </script>
+}
+
+@section scripts {
+    @if (ctx != null)
+    {
+        <script src="@Url.Content("~/Scripts/weekly-entry.js")"></script>
+    }
+}
